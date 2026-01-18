@@ -134,7 +134,7 @@ const StatsCard: React.FC<any> = ({ label, value, ctx }) => (
 );
 
 // --- Voice Control ---
-const VoiceControl: React.FC = () => {
+const VoiceControl: React.FC<{ isMobile?: boolean }> = ({ isMobile }) => {
     const [status, setStatus] = useState<'connected'|'disconnected'|'error'>('disconnected');
 
     useEffect(() => {
@@ -151,18 +151,12 @@ const VoiceControl: React.FC = () => {
         }
     };
 
+    const baseClass = isMobile 
+        ? `w-12 h-12 rounded-2xl flex items-center justify-center transition-all ${status === 'connected' ? 'bg-red-500 text-white animate-pulse' : 'bg-white/10 text-white'}`
+        : `fixed bottom-8 left-1/2 -translate-x-1/2 z-50 h-16 w-16 rounded-full flex items-center justify-center transition-all duration-300 shadow-[0_0_30px_rgba(0,0,0,0.5)] border border-white/10 ${status === 'connected' ? 'bg-red-500 text-white animate-pulse shadow-[0_0_40px_rgba(239,68,68,0.4)]' : 'bg-[#1a1a1a] text-gray-400 hover:text-white hover:bg-white/10 hover:scale-110'}`;
+
     return (
-        <button 
-            onClick={toggle}
-            className={`
-                fixed bottom-8 left-1/2 -translate-x-1/2 z-50
-                h-16 w-16 rounded-full flex items-center justify-center
-                transition-all duration-300 shadow-[0_0_30px_rgba(0,0,0,0.5)] border border-white/10
-                ${status === 'connected' 
-                    ? 'bg-red-500 text-white animate-pulse shadow-[0_0_40px_rgba(239,68,68,0.4)]' 
-                    : 'bg-[#1a1a1a] text-gray-400 hover:text-white hover:bg-white/10 hover:scale-110'}
-            `}
-        >
+        <button onClick={toggle} className={baseClass}>
              {status === 'connected' ? (
                 <div className="flex gap-1 h-4 items-center">
                     <div className="w-1 bg-white animate-[bounce_1s_infinite] h-full" />
@@ -321,7 +315,7 @@ export const Terminal: React.FC = () => {
     if (!isOpen) return null;
 
     return (
-        <div className="fixed bottom-0 left-0 right-0 h-48 bg-[#0a0a0a] border-t border-white/10 z-[40] shadow-[0_-10px_40px_rgba(0,0,0,0.5)] flex flex-col">
+        <div className="fixed bottom-0 left-0 right-0 h-48 bg-[#0a0a0a] border-t border-white/10 z-[40] shadow-[0_-10px_40px_rgba(0,0,0,0.5)] flex flex-col hidden lg:flex">
             <div className="flex items-center justify-between px-4 py-2 bg-white/[0.02] border-b border-white/5">
                 <div className="text-[10px] font-black uppercase tracking-widest text-gray-500 flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-flash-accent animate-pulse"></span>
@@ -698,14 +692,14 @@ const Canvas: React.FC<any> = ({ tabs, selectedTabPath, editor, emptyState, ctx 
         <div className="flex flex-col h-full">
             {/* Tabs */}
             {tabs && (
-                <div className="flex items-center gap-6 mb-6 border-b border-white/5 pb-0 px-2">
+                <div className="flex items-center gap-6 mb-6 border-b border-white/5 pb-0 px-2 overflow-x-auto no-scrollbar">
                     {tabs.map((tab: any) => {
                         const isActive = selectedTab === tab.id;
                         return (
                             <button
                                 key={tab.id}
                                 onClick={() => setPath(selectedTabPath, tab.id)}
-                                className={`pb-3 text-[10px] font-bold uppercase tracking-[0.2em] transition-all relative ${isActive ? 'text-flash-accent' : 'text-gray-600 hover:text-gray-400'}`}
+                                className={`pb-3 text-[10px] font-bold uppercase tracking-[0.2em] transition-all relative whitespace-nowrap ${isActive ? 'text-flash-accent' : 'text-gray-600 hover:text-gray-400'}`}
                             >
                                 {tab.label}
                                 {isActive && <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-flash-accent shadow-[0_0_15px_rgba(22,198,12,0.8)] rounded-full" />}
@@ -838,17 +832,19 @@ const Inspector: React.FC<any> = ({ sections = [], ctx }) => {
 
 const Workspace3Pane: React.FC<any> = ({ header, left, center, right, ctx }) => {
   const isFocusMode = useAppStore(s => s.data.ui?.focusMode);
+  // Mobile View Logic: "agents", "canvas", "inspector"
+  const [mobileView, setMobileView] = useState<'agents'|'canvas'|'inspector'>('canvas');
   
   return (
-    <div className="max-w-[1800px] mx-auto pb-48">
-      {/* Voice Control Floating Button */}
-      <VoiceControl />
+    <div className="max-w-[1800px] mx-auto pb-48 lg:pb-12 min-h-screen flex flex-col">
+      {/* Desktop Voice Control */}
+      {!isFocusMode && <VoiceControl />}
 
       {/* Header */}
-      <div className="sticky top-0 z-40 bg-flash-bg/90 backdrop-blur-xl py-6 border-b border-white/5 mb-10 transition-all">
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 px-4">
+      <div className="sticky top-0 z-40 bg-flash-bg/90 backdrop-blur-xl py-6 border-b border-white/5 mb-6 lg:mb-10 transition-all px-4 sm:px-6">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
             <div>
-                <h1 className="text-4xl font-black tracking-tighter text-white drop-shadow-2xl">
+                <h1 className="text-3xl sm:text-4xl font-black tracking-tighter text-white drop-shadow-2xl">
                     <ReactiveText template={header?.title} ctx={ctx} as="span" />
                 </h1>
                 <div className="text-xs font-mono text-flash-accent mt-3 opacity-80 flex items-center gap-3">
@@ -864,35 +860,76 @@ const Workspace3Pane: React.FC<any> = ({ header, left, center, right, ctx }) => 
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" /></svg>
                 </button>
                 {(header?.actions || []).map((a: any, i: number) => (
-                    <div key={i} className="min-w-[140px]">{renderNode({ type: "Button", ...a }, ctx)}</div>
+                    <div key={i} className="min-w-[140px] hidden sm:block">{renderNode({ type: "Button", ...a }, ctx)}</div>
                 ))}
             </div>
         </div>
       </div>
 
-      {/* 3 Panes Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start px-2 relative transition-all duration-500">
-        {/* Left Rail */}
-        <div className={`lg:col-span-3 space-y-8 sticky top-36 transition-all duration-500 ${isFocusMode ? '-translate-x-full opacity-0 absolute' : 'opacity-100'}`}>
+      {/* Mobile/Tablet View Container */}
+      <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start px-2 relative transition-all duration-500">
+        
+        {/* Left Rail (Desktop: col 1-3, Mobile: Toggleable) */}
+        <div className={`
+            lg:col-span-3 space-y-8 transition-all duration-500 
+            ${isFocusMode ? 'lg:-translate-x-full lg:opacity-0 lg:absolute' : ''}
+            ${mobileView === 'agents' ? 'block animate-[fadeIn_0.3s]' : 'hidden lg:block lg:sticky lg:top-36'}
+        `}>
           <div className="bg-flash-surface/50 border border-white/5 rounded-[2.5rem] p-6 shadow-2xl backdrop-blur-xl">
             <AgentsRail {...left} ctx={ctx} />
             {left?.secondary && renderNode(left.secondary, ctx)}
           </div>
         </div>
 
-        {/* Center Canvas */}
-        <div className={`min-h-[700px] transition-all duration-500 ${isFocusMode ? 'lg:col-span-12' : 'lg:col-span-6'}`}>
+        {/* Center Canvas (Desktop: col 4-9, Mobile: Toggleable) */}
+        <div className={`
+            min-h-[60vh] transition-all duration-500
+            ${isFocusMode ? 'lg:col-span-12' : 'lg:col-span-6'}
+            ${mobileView === 'canvas' ? 'block animate-[fadeIn_0.3s]' : 'hidden lg:block'}
+        `}>
           <div className="bg-flash-surface/30 border border-white/5 rounded-[3rem] p-1 shadow-2xl backdrop-blur-xl h-full">
-            <div className="h-full rounded-[2.8rem] bg-black/20 p-8 border border-white/5">
+            <div className="h-full rounded-[2.8rem] bg-black/20 p-4 sm:p-8 border border-white/5">
                 {renderNode(center, ctx)}
             </div>
           </div>
         </div>
 
-        {/* Right Inspector */}
-        <div className={`lg:col-span-3 sticky top-36 space-y-8 transition-all duration-500 ${isFocusMode ? 'translate-x-full opacity-0 absolute right-0' : 'opacity-100'}`}>
+        {/* Right Inspector (Desktop: col 10-12, Mobile: Toggleable) */}
+        <div className={`
+            lg:col-span-3 space-y-8 transition-all duration-500
+            ${isFocusMode ? 'lg:translate-x-full lg:opacity-0 lg:absolute lg:right-0' : ''}
+            ${mobileView === 'inspector' ? 'block animate-[fadeIn_0.3s]' : 'hidden lg:block lg:sticky lg:top-36'}
+        `}>
              <Inspector {...right} ctx={ctx} />
         </div>
+      </div>
+
+      {/* Mobile Bottom Floating Dock Navigation */}
+      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex gap-2 lg:hidden">
+          <div className="bg-[#121212]/90 backdrop-blur-xl border border-white/10 rounded-full p-2 flex items-center shadow-2xl gap-1">
+              <button 
+                onClick={() => setMobileView('agents')}
+                className={`p-3 rounded-full transition-all ${mobileView === 'agents' ? 'bg-white text-black' : 'text-gray-400 hover:text-white'}`}
+              >
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+              </button>
+              <button 
+                onClick={() => setMobileView('canvas')}
+                className={`p-3 rounded-full transition-all ${mobileView === 'canvas' ? 'bg-white text-black' : 'text-gray-400 hover:text-white'}`}
+              >
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" /></svg>
+              </button>
+              <button 
+                onClick={() => setMobileView('inspector')}
+                className={`p-3 rounded-full transition-all ${mobileView === 'inspector' ? 'bg-white text-black' : 'text-gray-400 hover:text-white'}`}
+              >
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+              </button>
+              {/* Integrated Voice Control for Mobile */}
+              <div className="pl-2 border-l border-white/10 ml-1">
+                  <VoiceControl isMobile={true} />
+              </div>
+          </div>
       </div>
     </div>
   );
