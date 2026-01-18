@@ -37,7 +37,7 @@ export const Grid: React.FC<any> = ({ gap = 4, columns = 1, children }) => {
 };
 
 export const Card: React.FC<any> = ({ title, children, ctx }) => (
-  <div className="bg-flash-surface/40 backdrop-blur-2xl border border-white/5 rounded-[2rem] p-8 shadow-2xl transition-all duration-500 hover:border-white/10 hover:shadow-black/50 group relative overflow-hidden">
+  <div className="bg-flash-surface/40 backdrop-blur-2xl border border-white/5 rounded-card p-8 shadow-2xl transition-all duration-500 hover:border-white/10 hover:shadow-black/50 group relative overflow-hidden">
     {title && (
       <div className="font-bold text-[10px] uppercase tracking-[0.2em] text-gray-500 mb-6 flex items-center gap-3 relative z-10">
          <div className="w-1.5 h-1.5 rounded-full bg-flash-accent/50 group-hover:bg-flash-accent group-hover:shadow-[0_0_8px_rgba(22,198,12,0.8)] transition-all"></div>
@@ -50,7 +50,7 @@ export const Card: React.FC<any> = ({ title, children, ctx }) => (
 
 export const Button: React.FC<any> = ({ label, variant, onClick, ctx }) => {
   const isPrimary = variant === "primary";
-  const baseClass = "w-full py-4 px-8 rounded-full font-bold text-[10px] uppercase tracking-[0.2em] transition-all duration-300 active:scale-95 flex items-center justify-center gap-3";
+  const baseClass = "w-full py-4 px-8 rounded-btn font-bold text-[10px] uppercase tracking-[0.2em] transition-all duration-300 active:scale-95 flex items-center justify-center gap-3";
   const styleClass = isPrimary 
     ? "bg-flash-accent text-white hover:bg-[#1ae010] hover:shadow-[0_0_30px_rgba(22,198,12,0.3)] shadow-[0_0_15px_rgba(22,198,12,0.1)]" 
     : "bg-white/5 text-gray-400 hover:bg-white/10 border border-white/5 hover:text-white backdrop-blur-md";
@@ -83,14 +83,14 @@ export const TextInput: React.FC<any> = ({ label, path, placeholder, ctx }) => {
         value={val || ""} 
         onChange={(e) => setPath(path, e.target.value)}
         placeholder={placeholder}
-        className="bg-black/20 border border-white/5 rounded-2xl px-6 py-4 text-sm focus:outline-none focus:border-flash-accent/30 focus:bg-black/40 text-white placeholder-gray-700 transition-all font-medium"
+        className="bg-black/20 border border-white/5 rounded-input px-6 py-4 text-sm focus:outline-none focus:border-flash-accent/30 focus:bg-black/40 text-white placeholder-gray-700 transition-all font-medium"
       />
     </div>
   );
 };
 
 export const StatsCard: React.FC<any> = ({ label, value, ctx }) => (
-    <div className="bg-white/[0.03] rounded-[2rem] p-6 flex flex-col items-center justify-center border border-white/5 relative overflow-hidden group hover:bg-white/[0.05] transition-colors">
+    <div className="bg-white/[0.03] rounded-card p-6 flex flex-col items-center justify-center border border-white/5 relative overflow-hidden group hover:bg-white/[0.05] transition-colors">
         <div className="text-3xl font-black text-white z-10 tracking-tight">
             <ReactiveText template={value} ctx={ctx} as="span" />
         </div>

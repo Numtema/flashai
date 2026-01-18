@@ -8,14 +8,61 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    
+    <style>
+      :root {
+        /* ================================================================= */
+        /* 🎨 FLASH THEME ENGINE - MODIFY HERE TO CHANGE THE ENTIRE APP UI   */
+        /* ================================================================= */
+
+        /* 1. TYPOGRAPHY */
+        --font-sans: 'Inter', sans-serif;
+        --font-mono: 'JetBrains Mono', monospace;
+
+        /* 2. SHAPES (Border Radius) */
+        --radius-card: 2rem;      /* Big containers */
+        --radius-input: 1rem;     /* Inputs, small items */
+        --radius-btn: 9999px;     /* Buttons (Pill shape default) */
+
+        /* 3. COLORS (Palette) */
+        --flash-bg: #0a0a0a;
+        --flash-surface: #121212;
+        --flash-accent: #16C60C;
+        --flash-border: rgba(255,255,255,0.08);
+
+        /* ================================================================= */
+      }
+
+      .theme-bw {
+        --flash-accent: #ffffff;
+      }
+
+      body { 
+        background-color: var(--flash-bg); 
+        color: #e5e5e5; 
+        font-family: var(--font-sans);
+      }
+      
+      /* Custom Scrollbar */
+      ::-webkit-scrollbar { width: 6px; height: 6px; }
+      ::-webkit-scrollbar-track { background: transparent; }
+      ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 3px; }
+      ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.2); }
+    </style>
+
     <script>
       tailwind.config = {
         darkMode: 'class',
         theme: {
           extend: {
             fontFamily: {
-              sans: ['Inter', 'sans-serif'],
-              mono: ['JetBrains Mono', 'monospace'],
+              sans: ['var(--font-sans)'],
+              mono: ['var(--font-mono)'],
+            },
+            borderRadius: {
+              'card': 'var(--radius-card)',
+              'input': 'var(--radius-input)',
+              'btn': 'var(--radius-btn)',
             },
             colors: {
               flash: {
@@ -29,23 +76,6 @@
         }
       }
     </script>
-    <style>
-      :root {
-        --flash-bg: #0a0a0a;
-        --flash-surface: #121212;
-        --flash-accent: #16C60C;
-        --flash-border: rgba(255,255,255,0.08);
-      }
-      .theme-bw {
-        --flash-accent: #ffffff;
-      }
-      body { background-color: var(--flash-bg); color: #e5e5e5; }
-      /* Custom Scrollbar for "Silent UI" feel */
-      ::-webkit-scrollbar { width: 6px; height: 6px; }
-      ::-webkit-scrollbar-track { background: transparent; }
-      ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 3px; }
-      ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.2); }
-    </style>
   <script type="importmap">
 {
   "imports": {

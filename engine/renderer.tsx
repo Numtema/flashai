@@ -63,8 +63,8 @@ const VoiceControl: React.FC<{ isMobile?: boolean }> = ({ isMobile }) => {
     };
 
     const baseClass = isMobile 
-        ? `w-12 h-12 rounded-2xl flex items-center justify-center transition-all ${status === 'connected' ? 'bg-red-500 text-white animate-pulse' : 'bg-white/10 text-white'}`
-        : `fixed bottom-8 left-1/2 -translate-x-1/2 z-50 h-16 w-16 rounded-full flex items-center justify-center transition-all duration-300 shadow-[0_0_30px_rgba(0,0,0,0.5)] border border-white/10 ${status === 'connected' ? 'bg-red-500 text-white animate-pulse shadow-[0_0_40px_rgba(239,68,68,0.4)]' : 'bg-[#1a1a1a] text-gray-400 hover:text-white hover:bg-white/10 hover:scale-110'}`;
+        ? `w-12 h-12 rounded-input flex items-center justify-center transition-all ${status === 'connected' ? 'bg-red-500 text-white animate-pulse' : 'bg-white/10 text-white'}`
+        : `fixed bottom-8 left-1/2 -translate-x-1/2 z-50 h-16 w-16 rounded-full flex items-center justify-center transition-all duration-300 shadow-[0_0_30px_rgba(0,0,0,0.5)] border border-white/10 ${status === 'connected' ? 'bg-red-500 text-white animate-pulse shadow-[0_0_40px_rgba(239,68,68,0.4)]' : 'bg-flash-surface text-gray-400 hover:text-white hover:bg-white/10 hover:scale-110'}`;
 
     return (
         <button onClick={toggle} className={baseClass}>
@@ -83,7 +83,7 @@ const VoiceControl: React.FC<{ isMobile?: boolean }> = ({ isMobile }) => {
 
 const Timeline: React.FC<any> = ({ steps }) => {
     return (
-        <div className="bg-white/[0.02] border border-white/5 rounded-[2rem] p-8 backdrop-blur-sm relative overflow-hidden">
+        <div className="bg-white/[0.02] border border-white/5 rounded-card p-8 backdrop-blur-sm relative overflow-hidden">
              <div className="text-[9px] uppercase font-black tracking-widest text-gray-600 mb-8">Production Pipeline</div>
              <div className="relative pl-2">
                  {/* Connecting Line */}
@@ -98,8 +98,8 @@ const Timeline: React.FC<any> = ({ steps }) => {
                         return (
                             <div key={i} className="flex gap-4 items-start group">
                                 <div className={`
-                                    w-6 h-6 rounded-full border-2 z-10 flex items-center justify-center transition-all duration-500 bg-[#0a0a0a]
-                                    ${isDone ? 'border-flash-accent bg-flash-accent text-black' : isRunning ? 'border-yellow-400 shadow-[0_0_15px_rgba(250,204,21,0.5)]' : 'border-white/10 bg-black'}
+                                    w-6 h-6 rounded-full border-2 z-10 flex items-center justify-center transition-all duration-500 bg-flash-bg
+                                    ${isDone ? 'border-flash-accent bg-flash-accent text-black' : isRunning ? 'border-yellow-400 shadow-[0_0_15px_rgba(250,204,21,0.5)]' : 'border-white/10'}
                                 `}>
                                     {isDone && <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={4} d="M5 13l4 4L19 7" /></svg>}
                                     {isRunning && <div className="w-2 h-2 bg-yellow-400 rounded-full animate-ping" />}
@@ -126,7 +126,7 @@ export const ToastContainer: React.FC = () => {
     return (
         <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-3 pointer-events-none">
             {notifications.map(n => (
-                <div key={n.id} className="pointer-events-auto min-w-[300px] bg-flash-surface border border-white/10 rounded-2xl p-4 shadow-2xl backdrop-blur-md animate-[slideIn_0.3s_ease-out] flex items-center gap-4">
+                <div key={n.id} className="pointer-events-auto min-w-[300px] bg-flash-surface border border-white/10 rounded-input p-4 shadow-2xl backdrop-blur-md animate-[slideIn_0.3s_ease-out] flex items-center gap-4">
                     <div className={`w-2 h-2 rounded-full ${n.type === 'error' ? 'bg-red-500' : n.type === 'success' ? 'bg-flash-accent' : 'bg-blue-400'} shadow-[0_0_10px_currentColor]`} />
                     <div className="flex-1 text-xs font-medium text-white">{n.message}</div>
                     <button onClick={() => remove(n.id)} className="text-white/30 hover:text-white">✕</button>
@@ -178,7 +178,7 @@ export const CommandPalette: React.FC = () => {
 
     return (
         <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-start justify-center pt-[20vh]" onClick={() => toggle('commandPaletteOpen')}>
-            <div className="w-full max-w-lg bg-[#151515] border border-white/10 rounded-2xl shadow-2xl overflow-hidden flex flex-col animate-[fadeIn_0.15s_ease-out]" onClick={e => e.stopPropagation()}>
+            <div className="w-full max-w-lg bg-flash-surface border border-white/10 rounded-card shadow-2xl overflow-hidden flex flex-col animate-[fadeIn_0.15s_ease-out]" onClick={e => e.stopPropagation()}>
                 <div className="p-4 border-b border-white/5 flex items-center gap-3">
                     <svg className="w-5 h-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                     <input 
@@ -225,7 +225,7 @@ export const Terminal: React.FC = () => {
     if (!isOpen) return null;
 
     return (
-        <div className="fixed bottom-0 left-0 right-0 h-48 bg-[#0a0a0a] border-t border-white/10 z-[40] shadow-[0_-10px_40px_rgba(0,0,0,0.5)] flex flex-col hidden lg:flex">
+        <div className="fixed bottom-0 left-0 right-0 h-48 bg-flash-bg border-t border-white/10 z-[40] shadow-[0_-10px_40px_rgba(0,0,0,0.5)] flex flex-col hidden lg:flex">
             <div className="flex items-center justify-between px-4 py-2 bg-white/[0.02] border-b border-white/5">
                 <div className="text-[10px] font-black uppercase tracking-widest text-gray-500 flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-flash-accent animate-pulse"></span>
@@ -286,7 +286,7 @@ export const AgentSettingsModal: React.FC = () => {
 
     return (
         <div className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-md flex items-center justify-center p-4" onClick={handleClose}>
-            <div className="bg-[#121212] w-full max-w-2xl rounded-[2rem] border border-white/10 shadow-2xl overflow-hidden animate-[scaleIn_0.2s_ease-out]" onClick={e => e.stopPropagation()}>
+            <div className="bg-flash-surface w-full max-w-2xl rounded-card border border-white/10 shadow-2xl overflow-hidden animate-[scaleIn_0.2s_ease-out]" onClick={e => e.stopPropagation()}>
                 {/* ... (Modal content same as before) ... */}
                 <div className="p-8 border-b border-white/5 bg-white/[0.02] flex justify-between items-center">
                      <div>
@@ -310,7 +310,7 @@ export const AgentSettingsModal: React.FC = () => {
                         <textarea 
                             value={instruction}
                             onChange={e => setInstruction(e.target.value)}
-                            className="w-full h-40 bg-black/40 border border-white/10 rounded-2xl p-4 text-sm font-mono text-gray-300 focus:border-flash-accent/50 focus:ring-1 focus:ring-flash-accent/20 outline-none resize-none leading-relaxed placeholder-white/10"
+                            className="w-full h-40 bg-black/40 border border-white/10 rounded-input p-4 text-sm font-mono text-gray-300 focus:border-flash-accent/50 focus:ring-1 focus:ring-flash-accent/20 outline-none resize-none leading-relaxed placeholder-white/10"
                             placeholder="Define who this agent is and how it should behave..."
                         />
                     </div>
@@ -335,8 +335,8 @@ export const AgentSettingsModal: React.FC = () => {
                     </div>
                 </div>
                  <div className="p-6 bg-black/40 border-t border-white/5 flex justify-end gap-3">
-                    <button onClick={handleClose} className="px-6 py-3 rounded-xl text-xs font-bold text-gray-400 hover:text-white hover:bg-white/5 transition-all uppercase tracking-wider">Cancel</button>
-                    <button onClick={handleSave} className="px-8 py-3 rounded-xl bg-flash-accent text-white text-xs font-black uppercase tracking-widest hover:shadow-[0_0_20px_rgba(22,198,12,0.4)] transition-all transform hover:scale-105">
+                    <button onClick={handleClose} className="px-6 py-3 rounded-input text-xs font-bold text-gray-400 hover:text-white hover:bg-white/5 transition-all uppercase tracking-wider">Cancel</button>
+                    <button onClick={handleSave} className="px-8 py-3 rounded-input bg-flash-accent text-white text-xs font-black uppercase tracking-widest hover:shadow-[0_0_20px_rgba(22,198,12,0.4)] transition-all transform hover:scale-105">
                         Reprogram Agent
                     </button>
                 </div>
@@ -352,7 +352,7 @@ const AgentItem: React.FC<any> = ({ agent, ctx }) => {
 
     return (
         <div className={`
-            flex items-center justify-between gap-4 p-4 rounded-[1.8rem] border transition-all duration-500 group relative overflow-hidden
+            flex items-center justify-between gap-4 p-4 rounded-card border transition-all duration-500 group relative overflow-hidden
             ${isRunning ? 'bg-white/[0.03] border-flash-accent/20' : 'bg-black/20 border-white/5 hover:bg-white/5 hover:border-white/10'}
         `}>
             {/* Ambient Background Glow when running */}
@@ -361,8 +361,8 @@ const AgentItem: React.FC<any> = ({ agent, ctx }) => {
             <div className="flex items-center gap-4 relative z-10">
                 {/* Avatar with Status Dot */}
                 <div className="relative">
-                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-white/10 to-transparent p-0.5 shadow-inner">
-                        <div className="w-full h-full rounded-[14px] bg-black/40 flex items-center justify-center overflow-hidden">
+                    <div className="w-12 h-12 rounded-input bg-gradient-to-br from-white/10 to-transparent p-0.5 shadow-inner">
+                        <div className="w-full h-full rounded-input bg-black/40 flex items-center justify-center overflow-hidden">
                              {agent.avatar ? (
                                 <img src={agent.avatar} alt={agent.name} className="w-full h-full object-cover scale-110 group-hover:scale-125 transition-transform duration-500" />
                              ) : (
@@ -372,7 +372,7 @@ const AgentItem: React.FC<any> = ({ agent, ctx }) => {
                     </div>
                     {/* Status Dot Overlay */}
                     <div className="absolute -bottom-1 -right-1 flex">
-                        <div className={`w-3.5 h-3.5 rounded-full border-2 border-[#151515] transition-all duration-500 ${
+                        <div className={`w-3.5 h-3.5 rounded-full border-2 border-flash-surface transition-all duration-500 ${
                             isRunning ? 'bg-yellow-400 shadow-[0_0_12px_rgba(250,204,21,0.8)]' : 
                             isDone ? 'bg-flash-accent shadow-[0_0_8px_rgba(22,198,12,0.6)]' : 'bg-gray-600'
                         }`} />
@@ -471,9 +471,9 @@ const ArtifactEditor: React.FC<{ artifact: any; onSaveAction: any; onRefineActio
             const src = obj.url || obj.base64;
             return (
                 <div className="flex flex-col items-center justify-center h-full gap-4">
-                    <div className="relative rounded-[2rem] overflow-hidden border border-white/10 shadow-2xl bg-black/20">
+                    <div className="relative rounded-card overflow-hidden border border-white/10 shadow-2xl bg-black/20">
                         <img src={src} alt="Generated Artifact" className="max-h-[500px] max-w-full object-contain" />
-                        <div className="absolute inset-0 ring-1 ring-inset ring-white/5 rounded-[2rem] pointer-events-none" />
+                        <div className="absolute inset-0 ring-1 ring-inset ring-white/5 rounded-card pointer-events-none" />
                     </div>
                     <div className="flex gap-2">
                          <button 
@@ -514,22 +514,22 @@ const ArtifactEditor: React.FC<{ artifact: any; onSaveAction: any; onRefineActio
       <div className="absolute -top-14 right-0 z-30 flex gap-2 items-center">
           <button 
              onClick={() => { setShowRefine(!showRefine); setRefinePrompt(""); }}
-             className={`h-8 w-8 rounded-full flex items-center justify-center border transition-all ${showRefine ? 'bg-purple-500 text-white border-purple-500 shadow-[0_0_15px_rgba(168,85,247,0.5)]' : 'bg-black/40 text-purple-400 border-purple-500/30 hover:border-purple-500 hover:bg-purple-500/10'}`}
+             className={`h-8 w-8 rounded-full flex items-center justify-center border transition-all ${showRefine ? 'bg-purple-500 text-white border-purple-500 shadow-[0_0_15px_rgba(168,85,247,0.5)]' : 'bg-flash-surface text-purple-400 border-purple-500/30 hover:border-purple-500 hover:bg-purple-500/10'}`}
              title="Magic Refine"
           >
              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
           </button>
-          <div className="bg-black/40 backdrop-blur-md p-1 rounded-xl border border-white/5 flex gap-1 shadow-xl">
+          <div className="bg-flash-surface backdrop-blur-md p-1 rounded-input border border-white/5 flex gap-1 shadow-xl">
             <button onClick={() => setMode('edit')} className={`px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-colors ${mode === 'edit' ? 'bg-white/10 text-white shadow-sm' : 'text-gray-500 hover:text-white'}`}>Code</button>
             <button onClick={() => setMode('preview')} className={`px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-colors ${mode === 'preview' ? 'bg-white/10 text-white shadow-sm' : 'text-gray-500 hover:text-white'}`}>Preview</button>
           </div>
           <div className="relative">
-              <button onClick={() => setShowExport(!showExport)} className="bg-flash-accent/10 hover:bg-flash-accent/20 text-flash-accent border border-flash-accent/20 px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all flex items-center gap-2 backdrop-blur-md">
+              <button onClick={() => setShowExport(!showExport)} className="bg-flash-accent/10 hover:bg-flash-accent/20 text-flash-accent border border-flash-accent/20 px-4 py-2 rounded-input text-[9px] font-black uppercase tracking-widest transition-all flex items-center gap-2 backdrop-blur-md">
                   Export
                   <svg className={`w-3 h-3 transition-transform ${showExport ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
               </button>
               {showExport && (
-                  <div className="absolute top-full right-0 mt-2 w-32 bg-[#121212] border border-white/10 rounded-xl shadow-2xl overflow-hidden animate-[slideIn_0.1s_ease-out] z-50">
+                  <div className="absolute top-full right-0 mt-2 w-32 bg-flash-surface border border-white/10 rounded-input shadow-2xl overflow-hidden animate-[slideIn_0.1s_ease-out] z-50">
                       <button onClick={() => handleExport('json')} className="w-full text-left px-4 py-3 text-[10px] font-bold text-gray-400 hover:text-white hover:bg-white/5 transition-colors uppercase tracking-wider">JSON</button>
                       <button onClick={() => handleExport('md')} className="w-full text-left px-4 py-3 text-[10px] font-bold text-gray-400 hover:text-white hover:bg-white/5 transition-colors uppercase tracking-wider">Markdown</button>
                       <button onClick={() => handleExport('txt')} className="w-full text-left px-4 py-3 text-[10px] font-bold text-gray-400 hover:text-white hover:bg-white/5 transition-colors uppercase tracking-wider">Text</button>
@@ -540,16 +540,16 @@ const ArtifactEditor: React.FC<{ artifact: any; onSaveAction: any; onRefineActio
 
       {showRefine && (
         <div className="mb-4 animate-[slideIn_0.2s_ease-out]">
-            <div className="bg-[#1a1a1a] border border-purple-500/30 rounded-2xl p-2 flex gap-2 shadow-[0_0_30px_rgba(168,85,247,0.15)] relative overflow-hidden">
+            <div className="bg-flash-surface border border-purple-500/30 rounded-input p-2 flex gap-2 shadow-[0_0_30px_rgba(168,85,247,0.15)] relative overflow-hidden">
                 {isRefining && <div className="absolute inset-0 bg-white/5 animate-pulse z-0" />}
                 <div className="flex items-center pl-3 z-10"><svg className="w-4 h-4 text-purple-400 animate-bounce" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg></div>
                 <input autoFocus type="text" value={refinePrompt} onChange={(e) => setRefinePrompt(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleRefine()} placeholder="Describe how to change this artifact..." disabled={isRefining} className="flex-1 bg-transparent border-none outline-none text-xs text-white placeholder-gray-500 z-10" />
-                <button onClick={handleRefine} disabled={isRefining} className="bg-purple-600 hover:bg-purple-500 text-white px-4 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-colors disabled:opacity-50 z-10">{isRefining ? 'Refining...' : 'Apply Magic'}</button>
+                <button onClick={handleRefine} disabled={isRefining} className="bg-purple-600 hover:bg-purple-500 text-white px-4 py-1.5 rounded-input text-[10px] font-bold uppercase tracking-wider transition-colors disabled:opacity-50 z-10">{isRefining ? 'Refining...' : 'Apply Magic'}</button>
             </div>
         </div>
       )}
 
-      <div className="flex-1 mt-0 overflow-hidden relative rounded-[2rem] bg-black/20 border border-white/5">
+      <div className="flex-1 mt-0 overflow-hidden relative rounded-card bg-black/20 border border-white/5">
         <div className="absolute inset-0 overflow-y-auto custom-scrollbar p-6">
             {mode === 'edit' ? <textarea value={draft} onChange={(e) => setDraft(e.target.value)} className="w-full min-h-full bg-transparent border-none outline-none text-xs font-mono text-gray-300 resize-none leading-relaxed selection:bg-flash-accent/30 placeholder-white/10" spellCheck={false} placeholder="// JSON Data..." /> : renderPreview(draft)}
         </div>
@@ -652,7 +652,7 @@ const ArtifactsExplorer: React.FC<any> = ({ bind, onOpen, ctx }) => {
     const artifacts = useAppStore(s => s.getPath(bind)) || [];
     const selectedId = useAppStore(s => s.getPath("workspace.selectedArtifactId"));
 
-    if (!artifacts.length) return <div className="p-4 text-[10px] text-gray-500 italic opacity-50 text-center border border-white/5 rounded-2xl bg-black/20">No artifacts generated yet.</div>;
+    if (!artifacts.length) return <div className="p-4 text-[10px] text-gray-500 italic opacity-50 text-center border border-white/5 rounded-card bg-black/20">No artifacts generated yet.</div>;
 
     return (
         <div className="flex flex-col gap-2 animate-[fadeIn_0.3s_ease-out]">
@@ -668,7 +668,7 @@ const ArtifactsExplorer: React.FC<any> = ({ bind, onOpen, ctx }) => {
                                 runAction(def, { ...ctx, params: onOpen.params, item: art });
                             }
                         }}
-                        className={`w-full text-left px-4 py-3.5 rounded-2xl border transition-all duration-300 flex items-center gap-3 group relative overflow-hidden
+                        className={`w-full text-left px-4 py-3.5 rounded-input border transition-all duration-300 flex items-center gap-3 group relative overflow-hidden
                             ${isSelected 
                                 ? 'bg-flash-accent/10 border-flash-accent/40 text-white shadow-[0_0_20px_rgba(22,198,12,0.1)]' 
                                 : 'bg-white/[0.02] border-white/5 text-gray-400 hover:bg-white/5 hover:border-white/10 hover:text-white'}
@@ -691,7 +691,7 @@ const InspectorStatus: React.FC<any> = ({ ctx }) => {
     const versions = useAppStore(s => s.getPath('workspace.versions')) || [];
     
     return (
-        <div className="bg-white/[0.02] border border-white/5 rounded-[2rem] p-6 backdrop-blur-sm">
+        <div className="bg-white/[0.02] border border-white/5 rounded-card p-6 backdrop-blur-sm">
             <div className="text-[9px] uppercase font-black tracking-widest text-gray-600 mb-4">Project Status</div>
             <div className="flex items-center justify-between mb-4">
                  <div className="px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-[10px] font-bold text-white uppercase tracking-wider shadow-sm">{status}</div>
@@ -708,7 +708,7 @@ const InspectorStatus: React.FC<any> = ({ ctx }) => {
 
 const InspectorChecklist: React.FC<any> = ({ title, items, ctx }) => {
     return (
-        <div className="bg-white/[0.02] border border-white/5 rounded-[2rem] p-6 backdrop-blur-sm">
+        <div className="bg-white/[0.02] border border-white/5 rounded-card p-6 backdrop-blur-sm">
              <div className="text-[9px] uppercase font-black tracking-widest text-gray-600 mb-4">{title}</div>
              <div className="flex flex-col gap-3">
                 {items.map((item: any) => {
@@ -785,7 +785,7 @@ const Workspace3Pane: React.FC<any> = ({ header, left, center, right, ctx }) => 
             ${isFocusMode ? 'lg:-translate-x-full lg:opacity-0 lg:absolute' : ''}
             ${mobileView === 'agents' ? 'block animate-[fadeIn_0.3s]' : 'hidden lg:block lg:sticky lg:top-36'}
         `}>
-          <div className="bg-flash-surface/50 border border-white/5 rounded-[2.5rem] p-6 shadow-2xl backdrop-blur-xl">
+          <div className="bg-flash-surface/50 border border-white/5 rounded-card p-6 shadow-2xl backdrop-blur-xl">
             <AgentsRail {...left} ctx={ctx} />
             {left?.secondary && renderNode(left.secondary, ctx)}
           </div>
@@ -797,8 +797,8 @@ const Workspace3Pane: React.FC<any> = ({ header, left, center, right, ctx }) => 
             ${isFocusMode ? 'lg:col-span-12' : 'lg:col-span-6'}
             ${mobileView === 'canvas' ? 'block animate-[fadeIn_0.3s]' : 'hidden lg:block'}
         `}>
-          <div className="bg-flash-surface/30 border border-white/5 rounded-[3rem] p-1 shadow-2xl backdrop-blur-xl h-full">
-            <div className="h-full rounded-[2.8rem] bg-black/20 p-4 sm:p-8 border border-white/5">
+          <div className="bg-flash-surface/30 border border-white/5 rounded-card p-1 shadow-2xl backdrop-blur-xl h-full">
+            <div className="h-full rounded-card bg-black/20 p-4 sm:p-8 border border-white/5">
                 {renderNode(center, ctx)}
             </div>
           </div>
@@ -816,7 +816,7 @@ const Workspace3Pane: React.FC<any> = ({ header, left, center, right, ctx }) => 
 
       {/* Mobile Bottom Floating Dock Navigation */}
       <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex gap-2 lg:hidden">
-          <div className="bg-[#121212]/90 backdrop-blur-xl border border-white/10 rounded-full p-2 flex items-center shadow-2xl gap-1">
+          <div className="bg-flash-surface/90 backdrop-blur-xl border border-white/10 rounded-full p-2 flex items-center shadow-2xl gap-1">
               <button 
                 onClick={() => setMobileView('agents')}
                 className={`p-3 rounded-full transition-all ${mobileView === 'agents' ? 'bg-white text-black' : 'text-gray-400 hover:text-white'}`}
