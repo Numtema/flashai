@@ -271,6 +271,103 @@ export const Terminal: React.FC = () => {
     );
 };
 
+// Agent Settings Modal
+export const AgentSettingsModal: React.FC = () => {
+    const activeAgent = useAppStore(s => s.getPath('ui.activeAgentSettings'));
+    const configPath = `workspace.stateByAgent.${activeAgent}.config`;
+    const config = useAppStore(s => s.getPath(configPath)) || {};
+    
+    // Local state for editing
+    const [instruction, setInstruction] = useState(config.systemInstruction || "");
+    const [temperature, setTemperature] = useState(config.temperature ?? 0.7);
+
+    useEffect(() => {
+        if (activeAgent) {
+            setInstruction(config.systemInstruction || "");
+            setTemperature(config.temperature ?? 0.7);
+        }
+    }, [activeAgent, config.systemInstruction, config.temperature]);
+
+    const handleSave = () => {
+        const def = (flow.actions as any)['updateAgentConfig'];
+        runAction(def, { 
+            params: { 
+                agentName: activeAgent, 
+                systemInstruction: instruction, 
+                temperature: Number(temperature) 
+            } 
+        } as any);
+    };
+
+    const handleClose = () => {
+        const def = (flow.actions as any)['closeAgentSettings'];
+        runAction(def, {} as any);
+    };
+
+    if (!activeAgent) return null;
+
+    return (
+        <div className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-md flex items-center justify-center p-4" onClick={handleClose}>
+            <div className="bg-[#121212] w-full max-w-2xl rounded-[2rem] border border-white/10 shadow-2xl overflow-hidden animate-[scaleIn_0.2s_ease-out]" onClick={e => e.stopPropagation()}>
+                <div className="p-8 border-b border-white/5 bg-white/[0.02] flex justify-between items-center">
+                     <div>
+                        <div className="text-[10px] font-black uppercase tracking-[0.2em] text-flash-accent mb-2 flex items-center gap-2">
+                             <div className="w-2 h-2 rounded-full bg-flash-accent animate-pulse" />
+                             Agent Brain Config
+                        </div>
+                        <h2 className="text-2xl font-bold text-white capitalize">{activeAgent} Protocol</h2>
+                     </div>
+                     <button onClick={handleClose} className="w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-400 hover:text-white transition-all">
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                     </button>
+                </div>
+                
+                <div className="p-8 space-y-8">
+                    <div className="space-y-3">
+                        <label className="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2">
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>
+                            System Instruction (Persona)
+                        </label>
+                        <textarea 
+                            value={instruction}
+                            onChange={e => setInstruction(e.target.value)}
+                            className="w-full h-40 bg-black/40 border border-white/10 rounded-2xl p-4 text-sm font-mono text-gray-300 focus:border-flash-accent/50 focus:ring-1 focus:ring-flash-accent/20 outline-none resize-none leading-relaxed placeholder-white/10"
+                            placeholder="Define who this agent is and how it should behave..."
+                        />
+                    </div>
+
+                    <div className="space-y-4">
+                        <div className="flex justify-between items-center">
+                            <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">Creativity (Temperature)</label>
+                            <span className="text-xs font-mono bg-white/10 px-2 py-1 rounded text-white">{temperature}</span>
+                        </div>
+                        <input 
+                            type="range" 
+                            min="0" max="1" step="0.1"
+                            value={temperature}
+                            onChange={e => setTemperature(parseFloat(e.target.value))}
+                            className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-flash-accent"
+                        />
+                        <div className="flex justify-between text-[9px] text-gray-600 uppercase font-bold tracking-widest">
+                            <span>Precise</span>
+                            <span>Balanced</span>
+                            <span>Creative</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="p-6 bg-black/40 border-t border-white/5 flex justify-end gap-3">
+                    <button onClick={handleClose} className="px-6 py-3 rounded-xl text-xs font-bold text-gray-400 hover:text-white hover:bg-white/5 transition-all uppercase tracking-wider">Cancel</button>
+                    <button onClick={handleSave} className="px-8 py-3 rounded-xl bg-flash-accent text-white text-xs font-black uppercase tracking-widest hover:shadow-[0_0_20px_rgba(22,198,12,0.4)] transition-all transform hover:scale-105">
+                        Reprogram Agent
+                    </button>
+                </div>
+            </div>
+            <style>{`@keyframes scaleIn { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }`}</style>
+        </div>
+    );
+};
+
 const AgentItem: React.FC<any> = ({ agent, ctx }) => {
     const status = useAppStore(s => s.getPath(agent.statusPath)) || 'idle';
     const isRunning = status === 'running';
@@ -311,177 +408,94 @@ const AgentItem: React.FC<any> = ({ agent, ctx }) => {
                     <div className="text-[9px] opacity-40 mt-0.5 font-medium tracking-normal text-gray-300">{agent.role || status}</div>
                 </div>
             </div>
+            
+            <div className="flex items-center gap-2 relative z-10">
+                {/* Settings Button */}
+                <button
+                    className="w-8 h-8 rounded-full flex items-center justify-center bg-white/5 hover:bg-white/10 text-gray-500 hover:text-white transition-all duration-300"
+                    onClick={() => {
+                        if (agent.settingsAction && agent.settingsAction.$action) {
+                            const def = (flow.actions as any)[agent.settingsAction.$action];
+                            runAction(def, { ...ctx, params: agent.settingsAction.params });
+                        }
+                    }}
+                >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                </button>
 
-            <button 
-                className={`
-                    relative z-10 w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300
-                    ${isRunning 
-                        ? 'bg-transparent text-yellow-400' 
-                        : 'bg-white/5 hover:bg-flash-accent hover:text-white text-gray-500'}
-                `}
-                disabled={isRunning}
-                onClick={() => {
-                if (!isRunning) {
-                    const def = (flow.actions as any)[agent.primaryAction.onClick.$action];
-                    runAction(def, { ...ctx, params: agent.primaryAction.onClick.params });
-                }
-                }}
-            >
-                {isRunning ? (
-                    <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                ) : (
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                )}
-            </button>
+                {/* Run Button */}
+                <button 
+                    className={`
+                        w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300
+                        ${isRunning 
+                            ? 'bg-transparent text-yellow-400' 
+                            : 'bg-white/5 hover:bg-flash-accent hover:text-white text-gray-500'}
+                    `}
+                    disabled={isRunning}
+                    onClick={() => {
+                    if (!isRunning) {
+                        const def = (flow.actions as any)[agent.primaryAction.onClick.$action];
+                        runAction(def, { ...ctx, params: agent.primaryAction.onClick.params });
+                    }
+                    }}
+                >
+                    {isRunning ? (
+                        <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                    ) : (
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    )}
+                </button>
+            </div>
         </div>
     );
 };
 
-const AgentsRail: React.FC<any> = ({ agents = [], ctx }) => {
-  return (
-    <div>
-      <div className="text-[9px] font-black uppercase tracking-[0.2em] opacity-30 mb-5 px-4">Operations Team</div>
-      <div className="space-y-3">
-        {agents.map((a: any) => {
-          if (!a) return null;
-          return <AgentItem key={a.name} agent={a} ctx={ctx} />;
-        })}
-      </div>
-    </div>
-  );
-};
-
-const ArtifactsExplorer: React.FC<any> = ({ bind, onOpen, ctx }) => {
-  const data = useAppStore((s) => (bind ? s.getPath(bind) : [])) || [];
-  const selectedId = useAppStore(s => s.getPath("workspace.selectedArtifactId"));
-  const setPath = useAppStore(s => s.setPath);
-
-  return (
-    <div className="mt-10 space-y-3">
-      <div className="text-[9px] font-black uppercase tracking-[0.2em] opacity-30 px-4 mb-5">Generated Artifacts</div>
-      {data.length === 0 ? (
-        <div className="text-xs opacity-20 border-2 border-dashed border-white/5 rounded-3xl p-8 text-center mx-2 font-mono">
-          No artifacts yet.
-        </div>
-      ) : (
-        data.map((a: any) => {
-          if (!a) return null;
-          return (
-            <button
-              key={a.id}
-              className={`w-full text-left px-5 py-4 rounded-[1.5rem] border transition-all duration-300 group relative overflow-hidden
-                  ${selectedId === a.id ? 'bg-flash-accent/5 border-flash-accent/30 shadow-[0_0_20px_rgba(22,198,12,0.05)]' : 'bg-white/[0.02] border-transparent hover:border-white/5 hover:bg-white/[0.04]'}
-              `}
-              onClick={() => {
-                if (onOpen?.$action) {
-                  const def = (flow.actions as any)[onOpen.$action];
-                  const resolvedParams = interpolate(onOpen.params || {}, { ...ctx, item: a });
-                  runAction(def, { ...ctx, item: a, params: resolvedParams });
-                } else {
-                  setPath("workspace.selectedArtifactId", a.id);
-                }
-              }}
-            >
-              <div className="flex justify-between items-center relative z-10 mb-2">
-                  <div className="text-xs font-bold text-gray-300 group-hover:text-white transition-colors">{a.title}</div>
-                  <div className="text-[8px] uppercase opacity-40 bg-white/5 px-2 py-1 rounded-md font-bold tracking-widest">{a.kind}</div>
-              </div>
-              <div className="text-[9px] opacity-30 font-mono text-gray-400 truncate relative z-10 pl-0.5">{a.id}</div>
-            </button>
-          );
-        })
-      )}
-    </div>
-  );
-};
-
-const ChecklistItem: React.FC<{ item: any }> = ({ item }) => {
-    const v = useAppStore((s) => s.getPath(item.path));
-    return (
-        <div className="flex items-center justify-between text-xs bg-white/[0.02] px-4 py-3 rounded-2xl border border-transparent hover:border-white/5 transition-all">
-            <span className="opacity-60 font-medium tracking-wide">{item.label}</span>
-            <div className={`w-2 h-2 rounded-full transition-all duration-300 ${v ? "bg-flash-accent shadow-[0_0_8px_rgba(22,198,12,0.6)] scale-110" : "bg-red-500/20"}`}></div>
-        </div>
-    );
-};
-
-const Inspector: React.FC<any> = ({ sections = [] }) => {
-  const warnings = useAppStore((s) => s.getPath("workspace.warnings")) || [];
-  const errors = useAppStore((s) => s.getPath("workspace.errors")) || [];
-
-  return (
-    <div className="space-y-6">
-      {sections.map((sec: any, i: number) => {
-        if (!sec) return null;
-        if (sec.type === "Status") {
-          return (
-            <div key={i} className="p-6 rounded-[2rem] bg-black/20 border border-white/5 backdrop-blur-xl">
-              <div className="text-[9px] font-black uppercase tracking-[0.2em] opacity-50 mb-6 flex items-center gap-3">
-                 <div className="w-1.5 h-1.5 bg-flash-accent rounded-full animate-pulse shadow-[0_0_10px_rgba(22,198,12,0.8)]"></div>
-                 System Health
-              </div>
-              <div className="flex justify-between text-xs py-3 border-b border-white/5 items-center">
-                <span className="text-gray-500 font-medium">Warnings</span>
-                <span className={`font-mono font-bold px-2 py-1 rounded text-[10px] ${warnings.length > 0 ? 'bg-yellow-500/20 text-yellow-500' : 'text-gray-600'}`}>{warnings.length}</span>
-              </div>
-              <div className="flex justify-between text-xs py-3 items-center mt-1">
-                <span className="text-gray-500 font-medium">Errors</span>
-                <span className={`font-mono font-bold px-2 py-1 rounded text-[10px] ${errors.length > 0 ? 'bg-red-500/20 text-red-500' : 'text-gray-600'}`}>{errors.length}</span>
-              </div>
-            </div>
-          );
-        }
-        if (sec.type === "Checklist") {
-          return (
-            <div key={i} className="p-6 rounded-[2rem] bg-black/20 border border-white/5 backdrop-blur-xl">
-              <div className="text-[9px] font-black uppercase tracking-[0.2em] opacity-50 mb-6">{sec.title}</div>
-              <div className="space-y-2">
-                {sec.items.map((it: any) => (
-                    <ChecklistItem key={it.id} item={it} />
-                ))}
-              </div>
-            </div>
-          );
-        }
-        return null;
-      })}
-    </div>
-  );
-};
-
-const ArtifactEditor: React.FC<{ artifact: any; onSaveAction: any; ctx: any }> = ({ artifact, onSaveAction, ctx }) => {
+const ArtifactEditor: React.FC<{ artifact: any; onSaveAction: any; onRefineAction?: any; ctx: any }> = ({ artifact, onSaveAction, onRefineAction, ctx }) => {
   const [draft, setDraft] = useState(() => JSON.stringify(artifact.data, null, 2));
   const [mode, setMode] = useState<'edit'|'preview'>('edit');
   const [showExport, setShowExport] = useState(false);
+  
+  // Refine UI State
+  const [showRefine, setShowRefine] = useState(false);
+  const [refinePrompt, setRefinePrompt] = useState("");
+  const [isRefining, setIsRefining] = useState(false);
 
   React.useEffect(() => {
     setDraft(JSON.stringify(artifact.data, null, 2));
-  }, [artifact.id]);
+    setIsRefining(false);
+    setShowRefine(false);
+  }, [artifact.id, artifact.data]); // Update when data changes (e.g. after refine)
 
   // Determine if it is an image artifact based on 'kind' or data structure
   const isImage = artifact.kind === 'image' || (artifact.data && (artifact.data.url || artifact.data.base64));
 
   const handleExport = (format: string) => {
+    // ... existing export logic ...
     setShowExport(false);
     try {
         const data = JSON.parse(draft);
         const filename = `${artifact.title.replace(/\s+/g, '_')}_${Date.now()}`;
-
-        if (format === 'json') {
-            downloadFile(`${filename}.json`, draft, 'application/json');
-        } else if (format === 'md') {
-            const md = jsonToMarkdown(data);
-            downloadFile(`${filename}.md`, md, 'text/markdown');
-        } else if (format === 'txt') {
-             // Simple flatten
-            const txt = JSON.stringify(data, null, 2);
-            downloadFile(`${filename}.txt`, txt, 'text/plain');
-        }
-
+        if (format === 'json') downloadFile(`${filename}.json`, draft, 'application/json');
+        else if (format === 'md') downloadFile(`${filename}.md`, jsonToMarkdown(data), 'text/markdown');
+        else if (format === 'txt') downloadFile(`${filename}.txt`, JSON.stringify(data, null, 2), 'text/plain');
         eventBus.emit('ui.notify', { type: 'success', message: `Exported as ${format.toUpperCase()}` });
     } catch(e) {
         eventBus.emit('ui.notify', { type: 'error', message: 'Failed to export' });
     }
+  };
+
+  const handleRefine = () => {
+    if(!refinePrompt.trim()) return;
+    
+    setIsRefining(true);
+    // Don't close immediately to show state
+    
+    if (onRefineAction?.$action) {
+        const def = (flow.actions as any)[onRefineAction.$action];
+        // Pass the prompt to the action
+        runAction(def, { ...ctx, params: { artifactId: artifact.id, instruction: refinePrompt } });
+    }
+    // We let the store update or eventBus listener reset state, but for local UI feedback we keep spinning until data changes
   };
 
   // Preview Renderer
@@ -498,9 +512,10 @@ const ArtifactEditor: React.FC<{ artifact: any; onSaveAction: any; ctx: any }> =
                         <img src={src} alt="Generated Artifact" className="max-h-[500px] max-w-full object-contain" />
                         <div className="absolute inset-0 ring-1 ring-inset ring-white/5 rounded-[2rem] pointer-events-none" />
                     </div>
+                    {/* ... download button ... */}
                     <div className="flex gap-2">
-                        <button 
-                            onClick={() => downloadFile(`image_${artifact.id}.png`, src, 'image/png')} // Note: this works for Data URLs directly
+                         <button 
+                            onClick={() => downloadFile(`image_${artifact.id}.png`, src, 'image/png')}
                             className="bg-white/10 hover:bg-white/20 text-white px-6 py-2 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all flex items-center gap-2"
                         >
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
@@ -538,6 +553,15 @@ const ArtifactEditor: React.FC<{ artifact: any; onSaveAction: any; ctx: any }> =
     <div className="flex flex-col h-full relative">
       {/* Editor Header Toolbar */}
       <div className="absolute -top-14 right-0 z-30 flex gap-2 items-center">
+          {/* Magic Wand Toggle */}
+          <button 
+             onClick={() => { setShowRefine(!showRefine); setRefinePrompt(""); }}
+             className={`h-8 w-8 rounded-full flex items-center justify-center border transition-all ${showRefine ? 'bg-purple-500 text-white border-purple-500 shadow-[0_0_15px_rgba(168,85,247,0.5)]' : 'bg-black/40 text-purple-400 border-purple-500/30 hover:border-purple-500 hover:bg-purple-500/10'}`}
+             title="Magic Refine"
+          >
+             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+          </button>
+
           {/* View Toggle */}
           <div className="bg-black/40 backdrop-blur-md p-1 rounded-xl border border-white/5 flex gap-1 shadow-xl">
             <button 
@@ -571,6 +595,35 @@ const ArtifactEditor: React.FC<{ artifact: any; onSaveAction: any; ctx: any }> =
               )}
           </div>
       </div>
+
+      {/* Magic Refine Input Bar */}
+      {showRefine && (
+        <div className="mb-4 animate-[slideIn_0.2s_ease-out]">
+            <div className="bg-[#1a1a1a] border border-purple-500/30 rounded-2xl p-2 flex gap-2 shadow-[0_0_30px_rgba(168,85,247,0.15)] relative overflow-hidden">
+                {isRefining && <div className="absolute inset-0 bg-white/5 animate-pulse z-0" />}
+                <div className="flex items-center pl-3 z-10">
+                     <svg className="w-4 h-4 text-purple-400 animate-bounce" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg>
+                </div>
+                <input 
+                    autoFocus
+                    type="text" 
+                    value={refinePrompt}
+                    onChange={(e) => setRefinePrompt(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleRefine()}
+                    placeholder="Describe how to change this artifact..."
+                    disabled={isRefining}
+                    className="flex-1 bg-transparent border-none outline-none text-xs text-white placeholder-gray-500 z-10"
+                />
+                <button 
+                    onClick={handleRefine}
+                    disabled={isRefining}
+                    className="bg-purple-600 hover:bg-purple-500 text-white px-4 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-colors disabled:opacity-50 z-10"
+                >
+                    {isRefining ? 'Refining...' : 'Apply Magic'}
+                </button>
+            </div>
+        </div>
+      )}
 
       <div className="flex-1 mt-0 overflow-hidden relative rounded-[2rem] bg-black/20 border border-white/5">
         <div className="absolute inset-0 overflow-y-auto custom-scrollbar p-6">
@@ -698,13 +751,115 @@ const Canvas: React.FC<any> = ({ tabs = [], selectedTabPath, editor, emptyState,
                 {!artifact ? (
                     <div className="h-full flex items-center justify-center text-sm opacity-30 font-mono">Select an artifact from the left rail.</div>
                 ) : (
-                    <ArtifactEditor artifact={artifact} onSaveAction={editor?.onSave} ctx={ctx} />
+                    <ArtifactEditor artifact={artifact} onSaveAction={editor?.onSave} onRefineAction={editor?.onRefine} ctx={ctx} />
                 )}
             </div>
         </div>
       </div>
     </div>
   );
+};
+// ... rest of the file (AgentsRail, ArtifactsExplorer, etc) ...
+
+const AgentsRail: React.FC<any> = ({ agents = [], ctx }) => {
+    return (
+        <div className="flex flex-col gap-3">
+            {agents.map((agent: any, i: number) => (
+                <AgentItem key={i} agent={agent} ctx={ctx} />
+            ))}
+        </div>
+    );
+};
+
+const ArtifactsExplorer: React.FC<any> = ({ bind, onOpen, ctx }) => {
+    const artifacts = useAppStore(s => s.getPath(bind)) || [];
+    const selectedId = useAppStore(s => s.getPath("workspace.selectedArtifactId"));
+
+    if (!artifacts.length) return <div className="p-4 text-[10px] text-gray-500 italic opacity-50 text-center border border-white/5 rounded-2xl bg-black/20">No artifacts generated yet.</div>;
+
+    return (
+        <div className="flex flex-col gap-2 animate-[fadeIn_0.3s_ease-out]">
+            <div className="px-2 text-[9px] uppercase font-black tracking-widest text-gray-600 mb-2 mt-2">Artifacts</div>
+            {artifacts.map((art: any) => {
+                const isSelected = selectedId === art.id;
+                return (
+                    <button
+                        key={art.id}
+                        onClick={() => {
+                            if (onOpen?.$action) {
+                                const def = (flow.actions as any)[onOpen.$action];
+                                runAction(def, { ...ctx, params: onOpen.params, item: art });
+                            }
+                        }}
+                        className={`w-full text-left px-4 py-3.5 rounded-2xl border transition-all duration-300 flex items-center gap-3 group relative overflow-hidden
+                            ${isSelected 
+                                ? 'bg-flash-accent/10 border-flash-accent/40 text-white shadow-[0_0_20px_rgba(22,198,12,0.1)]' 
+                                : 'bg-white/[0.02] border-white/5 text-gray-400 hover:bg-white/5 hover:border-white/10 hover:text-white'}
+                        `}
+                    >
+                        <div className={`w-1.5 h-1.5 rounded-full transition-all ${isSelected ? 'bg-flash-accent shadow-[0_0_8px_currentColor]' : 'bg-gray-700 group-hover:bg-gray-500'}`} />
+                        <div className="flex-1 min-w-0">
+                            <div className="text-[11px] font-bold truncate leading-tight">{art.title}</div>
+                            <div className="text-[9px] opacity-40 uppercase tracking-wider font-medium mt-0.5">{art.kind}</div>
+                        </div>
+                    </button>
+                )
+            })}
+        </div>
+    );
+};
+
+const InspectorStatus: React.FC<any> = ({ ctx }) => {
+    const status = useAppStore(s => s.getPath('workspace.status')) || 'IDLE';
+    const versions = useAppStore(s => s.getPath('workspace.versions')) || [];
+    
+    return (
+        <div className="bg-white/[0.02] border border-white/5 rounded-[2rem] p-6 backdrop-blur-sm">
+            <div className="text-[9px] uppercase font-black tracking-widest text-gray-600 mb-4">Project Status</div>
+            <div className="flex items-center justify-between mb-4">
+                 <div className="px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-[10px] font-bold text-white uppercase tracking-wider shadow-sm">{status}</div>
+                 <div className="text-[10px] text-gray-500 font-mono">{versions.length} Ver</div>
+            </div>
+            <div className="h-12 flex items-end gap-1 opacity-40">
+                {[40,70,30,80,50,90,20,60,40,70].map((h,i) => (
+                    <div key={i} className="flex-1 bg-white/20 rounded-t-sm" style={{ height: `${h}%` }} />
+                ))}
+            </div>
+        </div>
+    )
+}
+
+const InspectorChecklist: React.FC<any> = ({ title, items, ctx }) => {
+    return (
+        <div className="bg-white/[0.02] border border-white/5 rounded-[2rem] p-6 backdrop-blur-sm">
+             <div className="text-[9px] uppercase font-black tracking-widest text-gray-600 mb-4">{title}</div>
+             <div className="flex flex-col gap-3">
+                {items.map((item: any) => {
+                     const val = useAppStore(s => s.getPath(item.path));
+                     return (
+                        <div key={item.id} className="flex items-center gap-3 group opacity-70 hover:opacity-100 transition-opacity cursor-default">
+                            <div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-colors ${val ? 'bg-flash-accent border-flash-accent text-black' : 'border-white/20 bg-black/20'}`}>
+                                {val && <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={4} d="M5 13l4 4L19 7" /></svg>}
+                            </div>
+                            <span className="text-[11px] font-medium text-gray-300">{item.label}</span>
+                        </div>
+                    );
+                })}
+             </div>
+        </div>
+    )
+}
+
+const Inspector: React.FC<any> = ({ sections = [], ctx }) => {
+    return (
+        <div className="flex flex-col gap-6">
+            {sections.map((sec: any, i: number) => {
+                if (sec.type === 'Status') return <InspectorStatus key={i} ctx={ctx} />;
+                if (sec.type === 'Checklist') return <InspectorChecklist key={i} {...sec} ctx={ctx} />;
+                return null;
+            })}
+        </div>
+    );
 };
 
 const Workspace3Pane: React.FC<any> = ({ header, left, center, right, ctx }) => {

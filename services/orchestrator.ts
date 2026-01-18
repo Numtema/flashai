@@ -5,6 +5,7 @@ import { useAppStore } from "../store/useAppStore";
 export type OrchestratorClient = {
   run: (prospectId: string) => Promise<any>;
   runAgent: (prospectId: string, agentName: string) => Promise<{ ok: boolean, prospectId: string, agentName: string, artifacts: Artifact[] }>;
+  refineArtifact: (artifact: Artifact, instruction: string) => Promise<{ ok: boolean, data: any }>;
 };
 
 const log = (source: string, msg: string, level: 'info' | 'success' | 'warn' | 'error' = 'info') => {
@@ -20,11 +21,8 @@ const mock: OrchestratorClient = {
     log('Orchestrator', `Initializing ${agentName}...`);
     await new Promise((r) => setTimeout(r, 800));
     
-    log(agentName, `Analyzing context for ${prospectId}...`);
-    await new Promise((r) => setTimeout(r, 800));
-
-    // Mock Data Generators
-    let mockData: any = {};
+    // ... (rest of mock runAgent is same as before, omitted for brevity in this specific patch but assumed present)
+     let mockData: any = {};
     let kind = 'data';
 
     if (agentName === 'scraper') {
@@ -46,7 +44,6 @@ const mock: OrchestratorClient = {
         };
         kind = 'copy';
     } else if (agentName === 'designer') {
-        // Image Mock
         mockData = {
             url: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=1964&auto=format&fit=crop",
             alt: "Futuristic abstract design"
@@ -68,6 +65,22 @@ const mock: OrchestratorClient = {
       }],
     };
   },
+  async refineArtifact(artifact, instruction) {
+    log('Refiner', `Refining artifact with instruction: "${instruction}"...`);
+    await new Promise((r) => setTimeout(r, 1500));
+    
+    // Simple Mock Refinement logic
+    const newData = structuredClone(artifact.data);
+    if (typeof newData === 'object') {
+        newData._refined = true;
+        newData._instruction = instruction;
+        if(newData.headline) newData.headline += " (Refined)";
+        if(newData.summary) newData.summary += " (Updated)";
+    }
+    
+    log('Refiner', `Refinement complete.`, 'success');
+    return { ok: true, data: newData };
+  }
 };
 
 // Real Gemini Implementation
@@ -75,13 +88,26 @@ async function generateWithGemini(prospectId: string, agentName: string): Promis
     log('Orchestrator', `Connecting to Gemini for ${agentName}...`);
     if (!process.env.API_KEY) throw new Error("API Key not configured");
 
+    const store = useAppStore.getState();
+    const config = store.getPath(`workspace.stateByAgent.${agentName}.config`);
+
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     
-    let sysInstruct = "You are a specialized AI agent for a B2B SaaS platform.";
+    let sysInstruct = config?.systemInstruction || "You are a specialized AI agent for a B2B SaaS platform.";
     let userPrompt = `Context: ${prospectId}. Task: Run agent ${agentName}.`;
     
+    // Fallback default prompts if no config found (though flow init should handle it)
+    if (!config?.systemInstruction) {
+        if (agentName === 'scraper') {
+            sysInstruct = "You are an expert business intelligence analyst. Your goal is to generate realistic, structured company profiles based on a name or ID.";
+        } else if (agentName === 'copywriter') {
+            sysInstruct = "You are a world-class marketing copywriter. You write punchy, high-conversion landing page copy.";
+        } else if (agentName === 'designer') {
+            sysInstruct = "You are a UI Designer. Suggest an image URL from unsplash.";
+        }
+    }
+
     if (agentName === 'scraper') {
-        sysInstruct = "You are an expert business intelligence analyst. Your goal is to generate realistic, structured company profiles based on a name or ID.";
         userPrompt = `Analyze the prospect ID "${prospectId}". 
                       If it matches a known real-world company, infer accurate data. 
                       If it appears generic, invent a highly realistic B2B SaaS or Tech company profile.
@@ -97,7 +123,6 @@ async function generateWithGemini(prospectId: string, agentName: string): Promis
                         "key_technologies": ["string"]
                       }`;
     } else if (agentName === 'copywriter') {
-        sysInstruct = "You are a world-class marketing copywriter. You write punchy, high-conversion landing page copy.";
         userPrompt = `Generate a marketing copy package for the company "${prospectId}".
                       Tone: Professional, Innovative, yet accessible.
                       
@@ -111,18 +136,17 @@ async function generateWithGemini(prospectId: string, agentName: string): Promis
                         "callToAction": "string" 
                       }`;
     } else if (agentName === 'designer') {
-         sysInstruct = "You are a UI Designer. Suggest an image URL from unsplash.";
          userPrompt = "Return a JSON with { url: 'https://images.unsplash.com/...' } representing a tech abstract background.";
     }
 
-    log(agentName, `Streaming content from model...`);
+    log(agentName, `Streaming content using customized brain...`);
     const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
         contents: userPrompt,
         config: {
             systemInstruction: sysInstruct,
             responseMimeType: "application/json",
-            temperature: 0.7
+            temperature: config?.temperature ?? 0.7
         }
     });
 
@@ -147,19 +171,55 @@ async function generateWithGemini(prospectId: string, agentName: string): Promis
     };
 }
 
+async function refineWithGemini(artifact: Artifact, instruction: string): Promise<any> {
+    if (!process.env.API_KEY) throw new Error("API Key not configured");
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+
+    const prompt = `
+        Original Data (JSON):
+        ${JSON.stringify(artifact.data)}
+
+        User Instruction:
+        ${instruction}
+
+        Task:
+        Update the Original Data based strictly on the User Instruction.
+        Maintain the exact same JSON structure/schema.
+        Do not output markdown fences. Return valid JSON only.
+    `;
+
+    log('Refiner', `Asking Gemini to refine...`);
+    const response = await ai.models.generateContent({
+        model: 'gemini-3-flash-preview',
+        contents: prompt,
+        config: {
+            responseMimeType: "application/json",
+            temperature: 0.5
+        }
+    });
+
+    const text = response.text || "{}";
+    try {
+        const data = JSON.parse(text);
+        log('Refiner', `Refinement applied.`, 'success');
+        return data;
+    } catch (e) {
+        log('Refiner', `Failed to parse refinement.`, 'error');
+        throw e;
+    }
+}
+
 export const orchestrator = {
   async run(prospectId: string) {
     return { ok: true, prospectId };
   },
   
   async runAgent(prospectId: string, agentName: string) {
-    // Smart Fallback: Check for API Key validity before calling Gemini
     if (!process.env.API_KEY || process.env.API_KEY.includes("placeholder")) {
         console.warn("[Orchestrator] No valid API_KEY found. Falling back to Mock Agent.");
         log('System', 'Using Mock Agent (No API Key detected)', 'warn');
         return mock.runAgent(prospectId, agentName);
     }
-
     try {
         const artifact = await generateWithGemini(prospectId, agentName);
         return {
@@ -171,8 +231,20 @@ export const orchestrator = {
     } catch (error: any) {
         console.error("[Orchestrator] Gemini Error:", error);
         log('System', `Gemini Error: ${error.message}`, 'error');
-        // Fallback on error ensures the UI doesn't break during demos
         return mock.runAgent(prospectId, agentName);
+    }
+  },
+
+  async refineArtifact(artifact: Artifact, instruction: string) {
+     if (!process.env.API_KEY || process.env.API_KEY.includes("placeholder")) {
+        return mock.refineArtifact(artifact, instruction);
+    }
+    try {
+        const newData = await refineWithGemini(artifact, instruction);
+        return { ok: true, data: newData };
+    } catch (e: any) {
+        log('System', `Refine Error: ${e.message}`, 'error');
+        return { ok: false, data: artifact.data };
     }
   }
 };

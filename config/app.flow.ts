@@ -22,9 +22,27 @@ const flow: AppFlow = {
           "errors": [],
           "warnings": [],
           "stateByAgent": {
-            "scraper": { "status": "idle" },
-            "copywriter": { "status": "idle" },
-            "designer": { "status": "idle" }
+            "scraper": { 
+                "status": "idle",
+                "config": {
+                    "systemInstruction": "You are an expert business intelligence analyst. Your goal is to generate realistic, structured company profiles based on a name or ID.",
+                    "temperature": 0.7
+                }
+            },
+            "copywriter": { 
+                "status": "idle", 
+                "config": {
+                    "systemInstruction": "You are a world-class marketing copywriter. You write punchy, high-conversion landing page copy. Tone: Professional, Innovative, yet accessible.",
+                    "temperature": 0.8
+                }
+            },
+            "designer": { 
+                "status": "idle",
+                "config": {
+                    "systemInstruction": "You are a UI Designer. Suggest an image URL from unsplash representing a tech abstract background.",
+                    "temperature": 0.5
+                }
+            }
           }
         }
       }
@@ -67,6 +85,12 @@ const flow: AppFlow = {
          { "op": "dispatch", "target": "orchestrator.runAgent", "payload": { "agentName": "designer", "prospectId": "{{workspace.prospectId}}" } }
       ]
     },
+    "refineArtifact": {
+        "type": "command",
+        "effects": [
+            { "op": "dispatch", "target": "orchestrator.refineArtifact", "payload": { "artifactId": "{{params.artifactId}}", "instruction": "{{params.instruction}}" } }
+        ]
+    },
     "saveArtifact": {
       "type": "command",
       "effects": [
@@ -85,6 +109,27 @@ const flow: AppFlow = {
         { "op": "set", "path": "workspace.selectedArtifactId", "value": "{{params.artifactId}}" },
         { "op": "set", "path": "workspace.selectedTab", "value": "profile" } 
       ]
+    },
+    "openAgentSettings": {
+        "type": "command",
+        "effects": [
+            { "op": "set", "path": "ui.activeAgentSettings", "value": "{{params.agentName}}" }
+        ]
+    },
+    "closeAgentSettings": {
+        "type": "command",
+        "effects": [
+            { "op": "set", "path": "ui.activeAgentSettings", "value": null }
+        ]
+    },
+    "updateAgentConfig": {
+        "type": "command",
+        "effects": [
+            { "op": "set", "path": "workspace.stateByAgent.{{params.agentName}}.config.systemInstruction", "value": "{{params.systemInstruction}}" },
+            { "op": "set", "path": "workspace.stateByAgent.{{params.agentName}}.config.temperature", "value": "{{params.temperature}}" },
+            { "op": "dispatch", "target": "ui.notify", "payload": { "type": "success", "message": "Agent brain reprogrammed" } },
+            { "op": "set", "path": "ui.activeAgentSettings", "value": null }
+        ]
     }
   },
   "screens": [
@@ -150,21 +195,24 @@ const flow: AppFlow = {
               "role": "Data Analyst",
               "avatar": "https://api.dicebear.com/9.x/bottts-neutral/svg?seed=scraper&backgroundColor=transparent",
               "statusPath": "workspace.stateByAgent.scraper.status",
-              "primaryAction": { "label": "Scan", "onClick": { "$action": "runScraper" } }
+              "primaryAction": { "label": "Scan", "onClick": { "$action": "runScraper" } },
+              "settingsAction": { "$action": "openAgentSettings", "params": { "agentName": "scraper" } }
             },
             {
               "name": "copywriter",
               "role": "Creative Lead",
               "avatar": "https://api.dicebear.com/9.x/bottts-neutral/svg?seed=copywriter&backgroundColor=transparent",
               "statusPath": "workspace.stateByAgent.copywriter.status",
-              "primaryAction": { "label": "Draft", "onClick": { "$action": "runCopywriter" } }
+              "primaryAction": { "label": "Draft", "onClick": { "$action": "runCopywriter" } },
+              "settingsAction": { "$action": "openAgentSettings", "params": { "agentName": "copywriter" } }
             },
             {
               "name": "designer",
               "role": "UI/UX Architect",
               "avatar": "https://api.dicebear.com/9.x/bottts-neutral/svg?seed=designer&backgroundColor=transparent",
               "statusPath": "workspace.stateByAgent.designer.status",
-              "primaryAction": { "label": "Design", "onClick": { "$action": "runDesigner" } } 
+              "primaryAction": { "label": "Design", "onClick": { "$action": "runDesigner" } },
+              "settingsAction": { "$action": "openAgentSettings", "params": { "agentName": "designer" } }
             }
           ],
           "secondary": {
@@ -183,7 +231,8 @@ const flow: AppFlow = {
           "selectedTabPath": "workspace.selectedTab",
           "editor": {
             "artifactIdPath": "workspace.selectedArtifactId",
-            "onSave": { "$action": "saveArtifact" }
+            "onSave": { "$action": "saveArtifact" },
+            "onRefine": { "$action": "refineArtifact" }
           },
           "emptyState": {
             "when": "workspace.artifacts.length == 0",

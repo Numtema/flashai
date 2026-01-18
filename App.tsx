@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo } from "react";
 import { HashRouter as Router, Routes, Route, Navigate, useParams, useNavigate } from "react-router-dom";
 import flow from "./config/app.flow";
-import { renderNode, ToastContainer, CommandPalette, Terminal } from "./engine/renderer";
+import { renderNode, ToastContainer, CommandPalette, Terminal, AgentSettingsModal } from "./engine/renderer";
 import { useAppStore } from "./store/useAppStore";
 import { eventBus } from "./engine/eventBus";
 import { orchestrator } from "./services/orchestrator";
@@ -96,13 +96,8 @@ export default function App() {
     // Handler: ui.notify
     const offNotify = eventBus.on("ui.notify", (payload) => {
         addNotify(payload.type, payload.message);
-        // Auto remove after 3s handled by component or separate effect, 
-        // but for now relying on manual or we can add timeout logic in store.
-        // Let's keep it simple: manual close in UI, or improved store logic later.
-        // Actually, let's auto-dismiss in the store for better UX:
         setTimeout(() => {
-             // We can't easily remove by ID here without returning ID from store.
-             // Relying on user close for now or future improvement.
+             // Cleanup if needed
         }, 3000);
     });
 
@@ -114,7 +109,6 @@ export default function App() {
         setPath("workspace.status", "INTAKE_RECEIVED");
         setPath("workspace.artifacts", []);
         
-        // Fix: Use state-driven navigation via NavBridge
         setPath("app.pendingNavTo", `/workspace/${id}`);
         addNotify('success', 'Workspace initialized');
     });
@@ -151,6 +145,30 @@ export default function App() {
         }
     });
 
+    // Handler: orchestrator.refineArtifact
+    const offRefine = eventBus.on("orchestrator.refineArtifact", async (payload) => {
+        const { artifactId, instruction } = payload;
+        const store = useAppStore.getState();
+        const artifact = store.data.workspace?.artifacts.find((a: any) => a.id === artifactId);
+        
+        if (!artifact) return;
+
+        // Visual indicator that refinement is happening (local state in component handles it via props mostly, but we can set a flag if we want)
+        // For now, relies on logs and notification on finish.
+        
+        try {
+            const res = await orchestrator.refineArtifact(artifact, instruction);
+            if (res.ok && res.data) {
+                store.applyArtifactPatch(artifactId, [{ op: 'set', path: 'data', value: res.data }]);
+                addNotify('success', 'Refinement applied');
+            } else {
+                addNotify('error', 'Refinement failed');
+            }
+        } catch (e) {
+            addNotify('error', 'Refinement failed');
+        }
+    });
+
     // Handler: artifacts.applyPatch
     const offPatch = eventBus.on("artifacts.applyPatch", (payload) => {
         const store = useAppStore.getState();
@@ -172,7 +190,7 @@ export default function App() {
     });
     
     return () => {
-        offCreate(); offLoad(); offRun(); offPatch(); offSnap(); offTheme(); offNotify();
+        offCreate(); offLoad(); offRun(); offRefine(); offPatch(); offSnap(); offTheme(); offNotify();
     };
 
   }, []);
@@ -192,6 +210,7 @@ export default function App() {
       <NavBridge />
       <ToastContainer />
       <CommandPalette />
+      <AgentSettingsModal />
       <Terminal />
       <div className="bg-flash-bg min-h-screen text-gray-200 font-sans selection:bg-flash-accent/30 selection:text-white">
         <Routes>
