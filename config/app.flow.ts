@@ -1,0 +1,175 @@
+import { AppFlow } from "../types";
+
+const flow: AppFlow = {
+  "app": {
+    "id": "flash-builder",
+    "name": "LeadSite Factory",
+    "routing": {
+      "initialRoute": "/dashboard",
+      "routes": [
+        { "path": "/dashboard", "screenId": "dashboard" },
+        { "path": "/workspace/:prospectId", "screenId": "workspace" }
+      ]
+    }
+  },
+  "state": {
+    "stores": {
+      "workspace": {
+        "initial": {
+          "status": "IDLE",
+          "artifacts": [],
+          "versions": [],
+          "errors": [],
+          "warnings": [],
+          "stateByAgent": {
+            "scraper": { "status": "idle" },
+            "copywriter": { "status": "idle" },
+            "designer": { "status": "idle" }
+          }
+        }
+      }
+    }
+  },
+  "actions": {
+    "createWorkspace": {
+      "type": "command",
+      "effects": [
+        { "op": "dispatch", "target": "workspace.create", "payload": { "draft": "{{draftIntake}}" } },
+        { "op": "dispatch", "target": "navigate", "payload": { "to": "/workspace/{{workspace.prospectId}}" } }
+      ]
+    },
+    "loadWorkspace": {
+      "type": "command",
+      "effects": [
+        { "op": "dispatch", "target": "workspace.load", "payload": { "prospectId": "{{params.prospectId}}" } }
+      ]
+    },
+    "runScraper": {
+      "type": "command",
+      "effects": [
+        { "op": "dispatch", "target": "orchestrator.runAgent", "payload": { "agentName": "scraper", "prospectId": "{{workspace.prospectId}}" } }
+      ]
+    },
+    "runCopywriter": {
+      "type": "command",
+      "effects": [
+         { "op": "dispatch", "target": "orchestrator.runAgent", "payload": { "agentName": "copywriter", "prospectId": "{{workspace.prospectId}}" } }
+      ]
+    },
+    "saveArtifact": {
+      "type": "command",
+      "effects": [
+        { "op": "dispatch", "target": "artifacts.applyPatch", "payload": { "artifactId": "{{params.artifactId}}", "patch": "{{params.patch}}" } },
+        { "op": "dispatch", "target": "versions.snapshot", "payload": { "note": "Manual save" } }
+      ]
+    }
+  },
+  "screens": [
+    {
+      "id": "dashboard",
+      "type": "Page",
+      "layout": {
+        "type": "Workspace3Pane",
+        "header": {
+          "title": "LeadSite Factory",
+          "subtitle": "Select a template to begin"
+        },
+        "center": {
+          "type": "Stack",
+          "gap": 6,
+          "children": [
+            {
+              "type": "Card",
+              "title": "New Project",
+              "children": [
+                { "type": "TextInput", "label": "Project Name", "path": "draftIntake.prospectName", "placeholder": "Acme Corp" },
+                { "type": "Button", "label": "Initialize Workspace", "variant": "primary", "onClick": { "$action": "createWorkspace" } }
+              ]
+            },
+            {
+               "type": "Grid",
+               "columns": 2,
+               "gap": 4,
+               "children": [
+                 { "type": "StatsCard", "label": "Total Projects", "value": "12" },
+                 { "type": "StatsCard", "label": "Agents Active", "value": "3" }
+               ]
+            }
+          ]
+        },
+        "left": { "agents": [] },
+        "right": { "sections": [] }
+      }
+    },
+    {
+      "id": "workspace",
+      "type": "Page",
+      "onEnter": [
+        { "op": "action", "name": "loadWorkspace", "params": { "prospectId": "{{route.params.prospectId}}" } }
+      ],
+      "layout": {
+        "type": "Workspace3Pane",
+        "header": {
+          "title": "{{workspace.prospectName}}",
+          "subtitle": "Workspace ID: {{workspace.prospectId}}",
+          "actions": [
+            { "type": "Button", "label": "Snapshot", "variant": "secondary", "onClick": { "$action": "saveArtifact", "params": { "note": "User requested" } } }
+          ]
+        },
+        "left": {
+          "agents": [
+            {
+              "name": "scraper",
+              "statusPath": "workspace.stateByAgent.scraper.status",
+              "primaryAction": { "label": "Scan", "onClick": { "$action": "runScraper" } }
+            },
+            {
+              "name": "copywriter",
+              "statusPath": "workspace.stateByAgent.copywriter.status",
+              "primaryAction": { "label": "Draft", "onClick": { "$action": "runCopywriter" } }
+            }
+          ],
+          "secondary": {
+             "type": "ArtifactsExplorer",
+             "bind": "workspace.artifacts",
+             "onOpen": { "$action": "command", "params": {} } 
+          }
+        },
+        "center": {
+          "type": "Canvas",
+          "tabs": [
+            { "id": "profile", "label": "Profile" },
+            { "id": "copy", "label": "Copy" },
+            { "id": "seo", "label": "SEO" }
+          ],
+          "selectedTabPath": "workspace.selectedTab",
+          "editor": {
+            "artifactIdPath": "workspace.selectedArtifactId",
+            "onSave": { "$action": "saveArtifact" }
+          },
+          "emptyState": {
+            "when": "workspace.artifacts.length == 0",
+            "title": "Waiting for Agents",
+            "text": "Run the Scraper agent on the left to generate initial data artifacts.",
+            "primary": { "label": "Quick Start", "onClick": { "$action": "runScraper" } }
+          }
+        },
+        "right": {
+          "sections": [
+            { "type": "Status" },
+            { 
+              "type": "Checklist",
+              "title": "Quality Gates",
+              "items": [
+                 { "id": "c1", "label": "Data Validated", "path": "workspace.flags.isValid" },
+                 { "id": "c2", "label": "Tone Check", "path": "workspace.flags.toneOk" }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  ]
+};
+
+export default flow;
