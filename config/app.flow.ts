@@ -34,8 +34,7 @@ const flow: AppFlow = {
     "createWorkspace": {
       "type": "command",
       "effects": [
-        { "op": "dispatch", "target": "workspace.create", "payload": { "draft": "{{draftIntake}}" } },
-        { "op": "dispatch", "target": "navigate", "payload": { "to": "/workspace/{{workspace.prospectId}}" } }
+        { "op": "dispatch", "target": "workspace.create", "payload": { "draft": "{{draftIntake}}" } }
       ]
     },
     "loadWorkspace": {
@@ -59,8 +58,21 @@ const flow: AppFlow = {
     "saveArtifact": {
       "type": "command",
       "effects": [
-        { "op": "dispatch", "target": "artifacts.applyPatch", "payload": { "artifactId": "{{params.artifactId}}", "patch": "{{params.patch}}" } },
-        { "op": "dispatch", "target": "versions.snapshot", "payload": { "note": "Manual save" } }
+        { "op": "dispatch", "target": "artifacts.applyPatch", "payload": { "artifactId": "{{params.artifactId}}", "patch": "{{params.patch}}" } }
+      ]
+    },
+    "snapshotWorkspace": {
+      "type": "command",
+      "effects": [
+        { "op": "dispatch", "target": "versions.snapshot", "payload": { "note": "{{params.note}}" } }
+      ]
+    },
+    "selectArtifact": {
+      "type": "command",
+      "effects": [
+        { "op": "set", "path": "workspace.selectedArtifactId", "value": "{{params.artifactId}}" },
+        // Optional: Reset tab to default if needed, or keep current
+        { "op": "set", "path": "workspace.selectedTab", "value": "profile" } 
       ]
     }
   },
@@ -113,7 +125,7 @@ const flow: AppFlow = {
           "title": "{{workspace.prospectName}}",
           "subtitle": "Workspace ID: {{workspace.prospectId}}",
           "actions": [
-            { "type": "Button", "label": "Snapshot", "variant": "secondary", "onClick": { "$action": "saveArtifact", "params": { "note": "User requested" } } }
+            { "type": "Button", "label": "Snapshot", "variant": "secondary", "onClick": { "$action": "snapshotWorkspace", "params": { "note": "User requested" } } }
           ]
         },
         "left": {
@@ -132,7 +144,7 @@ const flow: AppFlow = {
           "secondary": {
              "type": "ArtifactsExplorer",
              "bind": "workspace.artifacts",
-             "onOpen": { "$action": "command", "params": {} } 
+             "onOpen": { "$action": "selectArtifact" } 
           }
         },
         "center": {

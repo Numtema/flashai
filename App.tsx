@@ -66,10 +66,14 @@ export default function App() {
 
   // Initialize Global Event Bus Listeners
   useEffect(() => {
-    // Init State from JSON
+    // Init State from JSON (Only if store is empty/hydrated poorly, but persist handles this usually)
+    // We keep this to ensure defaults exist if local storage is empty
     const stores = flow.state?.stores || {};
-    for (const [k, v] of Object.entries(stores)) {
-      setPath(k, (v as any).initial ?? {});
+    const currentState = useAppStore.getState().data;
+    if (!currentState.workspace) {
+        for (const [k, v] of Object.entries(stores)) {
+            setPath(k, (v as any).initial ?? {});
+        }
     }
 
     // Handler: workspace.create
@@ -79,6 +83,9 @@ export default function App() {
         setPath("workspace.prospectName", payload?.draft?.prospectName || "New Project");
         setPath("workspace.status", "INTAKE_RECEIVED");
         setPath("workspace.artifacts", []);
+        
+        // Fix Race Condition: Navigate immediately via hash since we are outside React Context
+        window.location.hash = `#/workspace/${id}`;
     });
 
     // Handler: workspace.load

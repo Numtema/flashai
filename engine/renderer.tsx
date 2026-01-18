@@ -6,15 +6,28 @@ import flow from "../config/app.flow";
 import { runAction } from "./actions";
 import { evalExpr } from "./guards";
 
+// --- Style Mappings ---
+// Prevents dynamic class purging issues and ensures consistency
+const GAP_MAP: Record<number, string> = {
+  1: "gap-1", 2: "gap-2", 3: "gap-3", 4: "gap-4", 5: "gap-5", 6: "gap-6", 8: "gap-8", 10: "gap-10", 12: "gap-12"
+};
+
+const COL_MAP: Record<number, string> = {
+  1: "md:grid-cols-1", 2: "md:grid-cols-2", 3: "md:grid-cols-3", 4: "md:grid-cols-4", 12: "md:grid-cols-12"
+};
+
 // --- UI Primitives ---
 
-const Stack: React.FC<any> = ({ gap = 4, children }) => (
-  <div className={`flex flex-col gap-${gap}`}>{children}</div>
-);
+const Stack: React.FC<any> = ({ gap = 4, children }) => {
+  const gapClass = GAP_MAP[gap] || "gap-4";
+  return <div className={`flex flex-col ${gapClass}`}>{children}</div>;
+};
 
-const Grid: React.FC<any> = ({ gap = 4, columns = 1, children }) => (
-  <div className={`grid grid-cols-1 md:grid-cols-${columns} gap-${gap}`}>{children}</div>
-);
+const Grid: React.FC<any> = ({ gap = 4, columns = 1, children }) => {
+  const gapClass = GAP_MAP[gap] || "gap-4";
+  const colClass = COL_MAP[columns] || "md:grid-cols-1";
+  return <div className={`grid grid-cols-1 ${colClass} ${gapClass}`}>{children}</div>;
+};
 
 const ReactiveText: React.FC<any> = ({ template, ctx, className, as: Tag = "div" }) => {
   const value = useAppStore((state) => {
@@ -158,10 +171,14 @@ const ArtifactsExplorer: React.FC<any> = ({ bind, onOpen, ctx }) => {
                   ${selectedId === a.id ? 'bg-flash-accent/5 border-flash-accent/30 shadow-[0_0_20px_rgba(22,198,12,0.05)]' : 'bg-white/[0.02] border-transparent hover:border-white/5 hover:bg-white/[0.04]'}
               `}
               onClick={() => {
-                setPath("workspace.selectedArtifactId", a.id);
+                // Call the action defined in the flow
                 if (onOpen?.$action) {
                   const def = (flow.actions as any)[onOpen.$action];
+                  // Pass the clicked artifact ID to the action
                   runAction(def, { ...ctx, params: { artifactId: a.id } });
+                } else {
+                  // Fallback default behavior
+                  setPath("workspace.selectedArtifactId", a.id);
                 }
               }}
             >
@@ -176,6 +193,17 @@ const ArtifactsExplorer: React.FC<any> = ({ bind, onOpen, ctx }) => {
       )}
     </div>
   );
+};
+
+// Internal Component to avoid hook-in-loop error
+const ChecklistItem: React.FC<{ item: any }> = ({ item }) => {
+    const v = useAppStore((s) => s.getPath(item.path));
+    return (
+        <div className="flex items-center justify-between text-xs bg-white/[0.02] px-4 py-3 rounded-2xl border border-transparent hover:border-white/5 transition-all">
+            <span className="opacity-60 font-medium tracking-wide">{item.label}</span>
+            <div className={`w-2 h-2 rounded-full transition-all duration-300 ${v ? "bg-flash-accent shadow-[0_0_8px_rgba(22,198,12,0.6)] scale-110" : "bg-red-500/20"}`}></div>
+        </div>
+    );
 };
 
 const Inspector: React.FC<any> = ({ sections = [] }) => {
@@ -209,15 +237,9 @@ const Inspector: React.FC<any> = ({ sections = [] }) => {
             <div key={i} className="p-6 rounded-[2rem] bg-black/20 border border-white/5 backdrop-blur-xl">
               <div className="text-[9px] font-black uppercase tracking-[0.2em] opacity-50 mb-6">{sec.title}</div>
               <div className="space-y-2">
-                {sec.items.map((it: any) => {
-                  const v = useAppStore((s) => s.getPath(it.path));
-                  return (
-                    <div key={it.id} className="flex items-center justify-between text-xs bg-white/[0.02] px-4 py-3 rounded-2xl border border-transparent hover:border-white/5 transition-all">
-                      <span className="opacity-60 font-medium tracking-wide">{it.label}</span>
-                      <div className={`w-2 h-2 rounded-full transition-all duration-300 ${v ? "bg-flash-accent shadow-[0_0_8px_rgba(22,198,12,0.6)] scale-110" : "bg-red-500/20"}`}></div>
-                    </div>
-                  );
-                })}
+                {sec.items.map((it: any) => (
+                    <ChecklistItem key={it.id} item={it} />
+                ))}
               </div>
             </div>
           );
