@@ -7,6 +7,7 @@ import { runAction } from "./actions";
 import { evalExpr } from "./guards";
 import { eventBus } from "./eventBus";
 import { useNavigate } from "react-router-dom";
+import { liveService } from "../services/live";
 
 // --- Style Mappings ---
 const GAP_MAP: Record<number, string> = {
@@ -132,9 +133,88 @@ const StatsCard: React.FC<any> = ({ label, value, ctx }) => (
     </div>
 );
 
-// --- Complex Blocks ---
+// --- Voice Control ---
+const VoiceControl: React.FC = () => {
+    const [status, setStatus] = useState<'connected'|'disconnected'|'error'>('disconnected');
 
-// Toast System
+    useEffect(() => {
+        const h = (s: any) => setStatus(s);
+        const u = eventBus.on('live.status', h);
+        return u;
+    }, []);
+
+    const toggle = () => {
+        if (status === 'connected') {
+            liveService.disconnect();
+        } else {
+            liveService.connect();
+        }
+    };
+
+    return (
+        <button 
+            onClick={toggle}
+            className={`
+                fixed bottom-8 left-1/2 -translate-x-1/2 z-50
+                h-16 w-16 rounded-full flex items-center justify-center
+                transition-all duration-300 shadow-[0_0_30px_rgba(0,0,0,0.5)] border border-white/10
+                ${status === 'connected' 
+                    ? 'bg-red-500 text-white animate-pulse shadow-[0_0_40px_rgba(239,68,68,0.4)]' 
+                    : 'bg-[#1a1a1a] text-gray-400 hover:text-white hover:bg-white/10 hover:scale-110'}
+            `}
+        >
+             {status === 'connected' ? (
+                <div className="flex gap-1 h-4 items-center">
+                    <div className="w-1 bg-white animate-[bounce_1s_infinite] h-full" />
+                    <div className="w-1 bg-white animate-[bounce_1.2s_infinite] h-2/3" />
+                    <div className="w-1 bg-white animate-[bounce_0.8s_infinite] h-full" />
+                </div>
+             ) : (
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" /></svg>
+             )}
+        </button>
+    )
+}
+
+// --- Timeline ---
+const Timeline: React.FC<any> = ({ steps }) => {
+    return (
+        <div className="bg-white/[0.02] border border-white/5 rounded-[2rem] p-8 backdrop-blur-sm relative overflow-hidden">
+             <div className="text-[9px] uppercase font-black tracking-widest text-gray-600 mb-8">Production Pipeline</div>
+             <div className="relative pl-2">
+                 {/* Connecting Line */}
+                 <div className="absolute left-[11px] top-2 bottom-4 w-[2px] bg-white/5"></div>
+                 
+                 <div className="space-y-8 relative">
+                    {steps.map((step: any, i: number) => {
+                        const status = useAppStore(s => s.getPath(`workspace.stateByAgent.${step.agent}.status`)) || 'idle';
+                        const isDone = status === 'done';
+                        const isRunning = status === 'running';
+                        
+                        return (
+                            <div key={i} className="flex gap-4 items-start group">
+                                <div className={`
+                                    w-6 h-6 rounded-full border-2 z-10 flex items-center justify-center transition-all duration-500 bg-[#0a0a0a]
+                                    ${isDone ? 'border-flash-accent bg-flash-accent text-black' : isRunning ? 'border-yellow-400 shadow-[0_0_15px_rgba(250,204,21,0.5)]' : 'border-white/10 bg-black'}
+                                `}>
+                                    {isDone && <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={4} d="M5 13l4 4L19 7" /></svg>}
+                                    {isRunning && <div className="w-2 h-2 bg-yellow-400 rounded-full animate-ping" />}
+                                </div>
+                                <div className="flex-1 -mt-1">
+                                    <div className={`text-xs font-bold transition-colors ${isDone ? 'text-white' : isRunning ? 'text-yellow-400' : 'text-gray-600'}`}>
+                                        {step.label}
+                                    </div>
+                                    <div className="text-[9px] uppercase tracking-wider opacity-40 mt-0.5">{status}</div>
+                                </div>
+                            </div>
+                        )
+                    })}
+                 </div>
+             </div>
+        </div>
+    )
+}
+
 export const ToastContainer: React.FC = () => {
     const notifications = useAppStore(s => s.data.notifications) || [];
     const remove = useAppStore(s => s.removeNotification);
@@ -153,7 +233,6 @@ export const ToastContainer: React.FC = () => {
     );
 };
 
-// Global Command Palette
 export const CommandPalette: React.FC = () => {
     const isOpen = useAppStore(s => s.data.ui?.commandPaletteOpen);
     const toggle = useAppStore(s => s.toggleUi);
@@ -161,7 +240,6 @@ export const CommandPalette: React.FC = () => {
     const [query, setQuery] = useState("");
     const inputRef = useRef<HTMLInputElement>(null);
 
-    // Close on escape
     useEffect(() => {
         const handleDown = (e: KeyboardEvent) => {
             if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
@@ -229,7 +307,6 @@ export const CommandPalette: React.FC = () => {
     );
 };
 
-// Global Terminal
 export const Terminal: React.FC = () => {
     const isOpen = useAppStore(s => s.data.ui?.terminalOpen);
     const logs = useAppStore(s => s.data.logs) || [];
@@ -271,13 +348,10 @@ export const Terminal: React.FC = () => {
     );
 };
 
-// Agent Settings Modal
 export const AgentSettingsModal: React.FC = () => {
     const activeAgent = useAppStore(s => s.getPath('ui.activeAgentSettings'));
     const configPath = `workspace.stateByAgent.${activeAgent}.config`;
     const config = useAppStore(s => s.getPath(configPath)) || {};
-    
-    // Local state for editing
     const [instruction, setInstruction] = useState(config.systemInstruction || "");
     const [temperature, setTemperature] = useState(config.temperature ?? 0.7);
 
@@ -309,6 +383,7 @@ export const AgentSettingsModal: React.FC = () => {
     return (
         <div className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-md flex items-center justify-center p-4" onClick={handleClose}>
             <div className="bg-[#121212] w-full max-w-2xl rounded-[2rem] border border-white/10 shadow-2xl overflow-hidden animate-[scaleIn_0.2s_ease-out]" onClick={e => e.stopPropagation()}>
+                {/* ... (Modal content same as before) ... */}
                 <div className="p-8 border-b border-white/5 bg-white/[0.02] flex justify-between items-center">
                      <div>
                         <div className="text-[10px] font-black uppercase tracking-[0.2em] text-flash-accent mb-2 flex items-center gap-2">
@@ -335,8 +410,8 @@ export const AgentSettingsModal: React.FC = () => {
                             placeholder="Define who this agent is and how it should behave..."
                         />
                     </div>
-
-                    <div className="space-y-4">
+                    {/* ... (rest of modal content) ... */}
+                     <div className="space-y-4">
                         <div className="flex justify-between items-center">
                             <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">Creativity (Temperature)</label>
                             <span className="text-xs font-mono bg-white/10 px-2 py-1 rounded text-white">{temperature}</span>
@@ -355,15 +430,13 @@ export const AgentSettingsModal: React.FC = () => {
                         </div>
                     </div>
                 </div>
-
-                <div className="p-6 bg-black/40 border-t border-white/5 flex justify-end gap-3">
+                 <div className="p-6 bg-black/40 border-t border-white/5 flex justify-end gap-3">
                     <button onClick={handleClose} className="px-6 py-3 rounded-xl text-xs font-bold text-gray-400 hover:text-white hover:bg-white/5 transition-all uppercase tracking-wider">Cancel</button>
                     <button onClick={handleSave} className="px-8 py-3 rounded-xl bg-flash-accent text-white text-xs font-black uppercase tracking-widest hover:shadow-[0_0_20px_rgba(22,198,12,0.4)] transition-all transform hover:scale-105">
                         Reprogram Agent
                     </button>
                 </div>
             </div>
-            <style>{`@keyframes scaleIn { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }`}</style>
         </div>
     );
 };
@@ -410,7 +483,6 @@ const AgentItem: React.FC<any> = ({ agent, ctx }) => {
             </div>
             
             <div className="flex items-center gap-2 relative z-10">
-                {/* Settings Button */}
                 <button
                     className="w-8 h-8 rounded-full flex items-center justify-center bg-white/5 hover:bg-white/10 text-gray-500 hover:text-white transition-all duration-300"
                     onClick={() => {
@@ -422,8 +494,6 @@ const AgentItem: React.FC<any> = ({ agent, ctx }) => {
                 >
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                 </button>
-
-                {/* Run Button */}
                 <button 
                     className={`
                         w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300
@@ -451,11 +521,10 @@ const AgentItem: React.FC<any> = ({ agent, ctx }) => {
 };
 
 const ArtifactEditor: React.FC<{ artifact: any; onSaveAction: any; onRefineAction?: any; ctx: any }> = ({ artifact, onSaveAction, onRefineAction, ctx }) => {
+  // ... existing implementation
   const [draft, setDraft] = useState(() => JSON.stringify(artifact.data, null, 2));
   const [mode, setMode] = useState<'edit'|'preview'>('edit');
   const [showExport, setShowExport] = useState(false);
-  
-  // Refine UI State
   const [showRefine, setShowRefine] = useState(false);
   const [refinePrompt, setRefinePrompt] = useState("");
   const [isRefining, setIsRefining] = useState(false);
@@ -464,13 +533,11 @@ const ArtifactEditor: React.FC<{ artifact: any; onSaveAction: any; onRefineActio
     setDraft(JSON.stringify(artifact.data, null, 2));
     setIsRefining(false);
     setShowRefine(false);
-  }, [artifact.id, artifact.data]); // Update when data changes (e.g. after refine)
+  }, [artifact.id, artifact.data]); 
 
-  // Determine if it is an image artifact based on 'kind' or data structure
   const isImage = artifact.kind === 'image' || (artifact.data && (artifact.data.url || artifact.data.base64));
 
   const handleExport = (format: string) => {
-    // ... existing export logic ...
     setShowExport(false);
     try {
         const data = JSON.parse(draft);
@@ -486,24 +553,16 @@ const ArtifactEditor: React.FC<{ artifact: any; onSaveAction: any; onRefineActio
 
   const handleRefine = () => {
     if(!refinePrompt.trim()) return;
-    
     setIsRefining(true);
-    // Don't close immediately to show state
-    
     if (onRefineAction?.$action) {
         const def = (flow.actions as any)[onRefineAction.$action];
-        // Pass the prompt to the action
         runAction(def, { ...ctx, params: { artifactId: artifact.id, instruction: refinePrompt } });
     }
-    // We let the store update or eventBus listener reset state, but for local UI feedback we keep spinning until data changes
   };
 
-  // Preview Renderer
   const renderPreview = (jsonString: string) => {
     try {
         const obj = JSON.parse(jsonString);
-        
-        // Image Mode
         if (isImage) {
             const src = obj.url || obj.base64;
             return (
@@ -512,7 +571,6 @@ const ArtifactEditor: React.FC<{ artifact: any; onSaveAction: any; onRefineActio
                         <img src={src} alt="Generated Artifact" className="max-h-[500px] max-w-full object-contain" />
                         <div className="absolute inset-0 ring-1 ring-inset ring-white/5 rounded-[2rem] pointer-events-none" />
                     </div>
-                    {/* ... download button ... */}
                     <div className="flex gap-2">
                          <button 
                             onClick={() => downloadFile(`image_${artifact.id}.png`, src, 'image/png')}
@@ -525,8 +583,6 @@ const ArtifactEditor: React.FC<{ artifact: any; onSaveAction: any; onRefineActio
                 </div>
             );
         }
-
-        // Text/Data Mode
         return (
             <div className="space-y-4 font-sans text-gray-300">
                 {Object.entries(obj).map(([k, v]: any) => (
@@ -551,9 +607,7 @@ const ArtifactEditor: React.FC<{ artifact: any; onSaveAction: any; onRefineActio
 
   return (
     <div className="flex flex-col h-full relative">
-      {/* Editor Header Toolbar */}
       <div className="absolute -top-14 right-0 z-30 flex gap-2 items-center">
-          {/* Magic Wand Toggle */}
           <button 
              onClick={() => { setShowRefine(!showRefine); setRefinePrompt(""); }}
              className={`h-8 w-8 rounded-full flex items-center justify-center border transition-all ${showRefine ? 'bg-purple-500 text-white border-purple-500 shadow-[0_0_15px_rgba(168,85,247,0.5)]' : 'bg-black/40 text-purple-400 border-purple-500/30 hover:border-purple-500 hover:bg-purple-500/10'}`}
@@ -561,31 +615,15 @@ const ArtifactEditor: React.FC<{ artifact: any; onSaveAction: any; onRefineActio
           >
              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
           </button>
-
-          {/* View Toggle */}
           <div className="bg-black/40 backdrop-blur-md p-1 rounded-xl border border-white/5 flex gap-1 shadow-xl">
-            <button 
-                onClick={() => setMode('edit')}
-                className={`px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-colors ${mode === 'edit' ? 'bg-white/10 text-white shadow-sm' : 'text-gray-500 hover:text-white'}`}>
-                Code
-            </button>
-            <button 
-                onClick={() => setMode('preview')}
-                className={`px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-colors ${mode === 'preview' ? 'bg-white/10 text-white shadow-sm' : 'text-gray-500 hover:text-white'}`}>
-                Preview
-            </button>
+            <button onClick={() => setMode('edit')} className={`px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-colors ${mode === 'edit' ? 'bg-white/10 text-white shadow-sm' : 'text-gray-500 hover:text-white'}`}>Code</button>
+            <button onClick={() => setMode('preview')} className={`px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-colors ${mode === 'preview' ? 'bg-white/10 text-white shadow-sm' : 'text-gray-500 hover:text-white'}`}>Preview</button>
           </div>
-
-          {/* Export Dropdown */}
           <div className="relative">
-              <button 
-                  onClick={() => setShowExport(!showExport)}
-                  className="bg-flash-accent/10 hover:bg-flash-accent/20 text-flash-accent border border-flash-accent/20 px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all flex items-center gap-2 backdrop-blur-md"
-              >
+              <button onClick={() => setShowExport(!showExport)} className="bg-flash-accent/10 hover:bg-flash-accent/20 text-flash-accent border border-flash-accent/20 px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all flex items-center gap-2 backdrop-blur-md">
                   Export
                   <svg className={`w-3 h-3 transition-transform ${showExport ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
               </button>
-              
               {showExport && (
                   <div className="absolute top-full right-0 mt-2 w-32 bg-[#121212] border border-white/10 rounded-xl shadow-2xl overflow-hidden animate-[slideIn_0.1s_ease-out] z-50">
                       <button onClick={() => handleExport('json')} className="w-full text-left px-4 py-3 text-[10px] font-bold text-gray-400 hover:text-white hover:bg-white/5 transition-colors uppercase tracking-wider">JSON</button>
@@ -596,170 +634,105 @@ const ArtifactEditor: React.FC<{ artifact: any; onSaveAction: any; onRefineActio
           </div>
       </div>
 
-      {/* Magic Refine Input Bar */}
       {showRefine && (
         <div className="mb-4 animate-[slideIn_0.2s_ease-out]">
             <div className="bg-[#1a1a1a] border border-purple-500/30 rounded-2xl p-2 flex gap-2 shadow-[0_0_30px_rgba(168,85,247,0.15)] relative overflow-hidden">
                 {isRefining && <div className="absolute inset-0 bg-white/5 animate-pulse z-0" />}
-                <div className="flex items-center pl-3 z-10">
-                     <svg className="w-4 h-4 text-purple-400 animate-bounce" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg>
-                </div>
-                <input 
-                    autoFocus
-                    type="text" 
-                    value={refinePrompt}
-                    onChange={(e) => setRefinePrompt(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleRefine()}
-                    placeholder="Describe how to change this artifact..."
-                    disabled={isRefining}
-                    className="flex-1 bg-transparent border-none outline-none text-xs text-white placeholder-gray-500 z-10"
-                />
-                <button 
-                    onClick={handleRefine}
-                    disabled={isRefining}
-                    className="bg-purple-600 hover:bg-purple-500 text-white px-4 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-colors disabled:opacity-50 z-10"
-                >
-                    {isRefining ? 'Refining...' : 'Apply Magic'}
-                </button>
+                <div className="flex items-center pl-3 z-10"><svg className="w-4 h-4 text-purple-400 animate-bounce" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg></div>
+                <input autoFocus type="text" value={refinePrompt} onChange={(e) => setRefinePrompt(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleRefine()} placeholder="Describe how to change this artifact..." disabled={isRefining} className="flex-1 bg-transparent border-none outline-none text-xs text-white placeholder-gray-500 z-10" />
+                <button onClick={handleRefine} disabled={isRefining} className="bg-purple-600 hover:bg-purple-500 text-white px-4 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-colors disabled:opacity-50 z-10">{isRefining ? 'Refining...' : 'Apply Magic'}</button>
             </div>
         </div>
       )}
 
       <div className="flex-1 mt-0 overflow-hidden relative rounded-[2rem] bg-black/20 border border-white/5">
         <div className="absolute inset-0 overflow-y-auto custom-scrollbar p-6">
-            {mode === 'edit' ? (
-                <textarea
-                    value={draft}
-                    onChange={(e) => setDraft(e.target.value)}
-                    className="w-full min-h-full bg-transparent border-none outline-none text-xs font-mono text-gray-300 resize-none leading-relaxed selection:bg-flash-accent/30 placeholder-white/10"
-                    spellCheck={false}
-                    placeholder="// JSON Data..."
-                />
-            ) : (
-                renderPreview(draft)
-            )}
+            {mode === 'edit' ? <textarea value={draft} onChange={(e) => setDraft(e.target.value)} className="w-full min-h-full bg-transparent border-none outline-none text-xs font-mono text-gray-300 resize-none leading-relaxed selection:bg-flash-accent/30 placeholder-white/10" spellCheck={false} placeholder="// JSON Data..." /> : renderPreview(draft)}
         </div>
       </div>
 
       <div className="mt-4 flex justify-between items-center opacity-50 hover:opacity-100 transition-opacity">
-        <div className="text-[9px] font-mono text-gray-500 uppercase tracking-widest pl-2">
-            {mode === 'edit' ? 'Editing Mode' : 'Read-Only Mode'}
-        </div>
-        <button
-          className="px-6 py-2.5 rounded-full bg-white/5 hover:bg-flash-accent hover:text-white text-gray-400 border border-white/5 text-[9px] font-black uppercase tracking-[0.2em] transition-all hover:scale-105"
-          onClick={() => {
+        <div className="text-[9px] font-mono text-gray-500 uppercase tracking-widest pl-2">{mode === 'edit' ? 'Editing Mode' : 'Read-Only Mode'}</div>
+        <button className="px-6 py-2.5 rounded-full bg-white/5 hover:bg-flash-accent hover:text-white text-gray-400 border border-white/5 text-[9px] font-black uppercase tracking-[0.2em] transition-all hover:scale-105" onClick={() => {
             let nextData: any;
-            try {
-              nextData = JSON.parse(draft);
-            } catch (e) {
-              eventBus.emit('ui.notify', { type: 'error', message: 'Invalid JSON' });
-              return;
-            }
+            try { nextData = JSON.parse(draft); } catch (e) { eventBus.emit('ui.notify', { type: 'error', message: 'Invalid JSON' }); return; }
             const patch = [{ op: "set", path: "data", value: nextData }];
-            if (onSaveAction?.$action) {
-              const def = (flow.actions as any)[onSaveAction.$action];
-              runAction(def, { ...ctx, params: { artifactId: artifact.id, patch } });
-            }
-          }}
-        >
-          Save
-        </button>
+            if (onSaveAction?.$action) { const def = (flow.actions as any)[onSaveAction.$action]; runAction(def, { ...ctx, params: { artifactId: artifact.id, patch } }); }
+          }}>Save</button>
       </div>
     </div>
   );
 };
 
-const Canvas: React.FC<any> = ({ tabs = [], selectedTabPath, editor, emptyState, ctx }) => {
-  const selectedTab = useAppStore((s) => s.getPath(selectedTabPath)) || tabs?.[0]?.id;
-  
-  // Safe selector
-  const isEmpty = useAppStore(s => {
-      if (!emptyState) {
-          const a = s.getPath("workspace.artifacts");
-          return !a || a.length === 0;
-      }
-      if (emptyState.when) return evalExpr(emptyState.when, ctx, s);
-      const a = s.getPath("workspace.artifacts");
-      return !a || a.length === 0;
-  });
+const Canvas: React.FC<any> = ({ tabs, selectedTabPath, editor, emptyState, ctx }) => {
+    const selectedTab = useAppStore(s => s.getPath(selectedTabPath));
+    const setPath = useAppStore(s => s.setPath);
+    
+    // We need to know which artifact is selected.
+    const selectedArtifactId = useAppStore(s => s.getPath(editor.artifactIdPath));
+    const artifacts = useAppStore(s => s.getPath("workspace.artifacts")) || [];
+    const selectedArtifact = artifacts.find((a: any) => a.id === selectedArtifactId);
 
-  const selectedArtifactId = useAppStore((s) => s.getPath(editor?.artifactIdPath));
-  const artifact = useAppStore((s) => {
-     const id = s.getPath(editor?.artifactIdPath);
-     const arts = s.getPath("workspace.artifacts") || [];
-     return arts.find((a: any) => a.id === id);
-  });
-  
-  const shouldShowEmpty = emptyState && isEmpty;
+    // Use evalExpr to check for empty state
+    // If we have no artifact selected, or if condition matches
+    const showEmpty = !selectedArtifact || (emptyState?.when && evalExpr(emptyState.when, ctx));
 
-  if (shouldShowEmpty) {
-    return (
-      <div className="h-full flex flex-col items-center justify-center p-12 text-center bg-gradient-to-b from-white/[0.02] to-transparent rounded-[3rem] border-2 border-dashed border-white/5 relative overflow-hidden">
-        <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.02),transparent_70%)] pointer-events-none" />
-        <div className="w-24 h-24 bg-white/[0.03] rounded-full flex items-center justify-center mb-8 ring-1 ring-white/10 shadow-[0_0_50px_rgba(0,0,0,0.5)] backdrop-blur-md">
-            <svg className="w-10 h-10 opacity-30 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
-            </svg>
-        </div>
-        <div className="text-3xl font-black text-white mb-4 tracking-tight drop-shadow-xl">{emptyState.title}</div>
-        <div className="text-sm text-gray-500 max-w-sm mx-auto leading-relaxed mb-10">{emptyState.text}</div>
-        <div>
-          <button
-            className="px-10 py-4 rounded-full bg-flash-accent text-white text-[10px] font-black uppercase tracking-[0.2em] shadow-[0_0_40px_rgba(22,198,12,0.2)] hover:scale-105 transition-all duration-300 ring-4 ring-flash-accent/10 hover:ring-flash-accent/20"
-            onClick={() => {
-              const def = (flow.actions as any)[emptyState.primary.onClick.$action];
-              runAction(def, { ...ctx, params: emptyState.primary.onClick.params });
-            }}
-          >
-            {emptyState.primary.label}
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="h-full flex flex-col">
-      {/* Tabs */}
-      <div className="flex gap-3 pb-6 border-b border-white/5 overflow-x-auto no-scrollbar mask-gradient-right">
-        {tabs.map((t: any) => (
-          <button
-            key={t.id}
-            className={`px-6 py-3 rounded-full text-[9px] font-black uppercase tracking-[0.15em] border transition-all whitespace-nowrap ${
-              selectedTab === t.id
-                ? "bg-flash-accent text-white border-flash-accent shadow-[0_0_20px_rgba(22,198,12,0.2)]"
-                : "bg-white/5 border-white/5 text-gray-500 hover:text-white hover:border-white/10 hover:bg-white/10"
-            }`}
-            onClick={() => useAppStore.getState().setPath(selectedTabPath, t.id)}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Content Area */}
-      <div className="flex-1 mt-8 grid grid-cols-1 gap-6">
-        <div className="bg-flash-surface/50 border border-white/5 rounded-[3rem] p-2 flex flex-col relative overflow-hidden group shadow-2xl backdrop-blur-xl">
-            <div className="flex justify-between items-center px-8 py-5 border-b border-white/5 bg-white/[0.02] rounded-t-[2.5rem]">
-                <div className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-500 flex items-center gap-3">
-                    <span className="w-1.5 h-1.5 rounded-full bg-gray-600"></span>
-                    Artifact View <span className="mx-2 opacity-20">/</span> <span className="font-mono opacity-60 text-white tracking-normal">{selectedArtifactId || "Empty"}</span>
+    if (showEmpty && emptyState) {
+        return (
+             <div className="h-full flex flex-col items-center justify-center text-center p-8 animate-[fadeIn_0.5s_ease-out]">
+                <div className="w-24 h-24 rounded-full bg-white/5 flex items-center justify-center mb-6 animate-pulse border border-white/5">
+                    <svg className="w-10 h-10 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg>
                 </div>
-            </div>
-            
-            <div className="flex-1 p-4 min-h-[400px]">
-                {!artifact ? (
-                    <div className="h-full flex items-center justify-center text-sm opacity-30 font-mono">Select an artifact from the left rail.</div>
-                ) : (
-                    <ArtifactEditor artifact={artifact} onSaveAction={editor?.onSave} onRefineAction={editor?.onRefine} ctx={ctx} />
+                <h3 className="text-xl font-bold text-white mb-2 tracking-tight">{emptyState.title}</h3>
+                <p className="text-gray-500 max-w-md mb-8 leading-relaxed text-sm">{emptyState.text}</p>
+                {emptyState.primary && (
+                    <div className="w-auto inline-block">
+                         <Button {...emptyState.primary} variant="primary" ctx={ctx} />
+                    </div>
                 )}
+             </div>
+        );
+    }
+
+    return (
+        <div className="flex flex-col h-full">
+            {/* Tabs */}
+            {tabs && (
+                <div className="flex items-center gap-6 mb-6 border-b border-white/5 pb-0 px-2">
+                    {tabs.map((tab: any) => {
+                        const isActive = selectedTab === tab.id;
+                        return (
+                            <button
+                                key={tab.id}
+                                onClick={() => setPath(selectedTabPath, tab.id)}
+                                className={`pb-3 text-[10px] font-bold uppercase tracking-[0.2em] transition-all relative ${isActive ? 'text-flash-accent' : 'text-gray-600 hover:text-gray-400'}`}
+                            >
+                                {tab.label}
+                                {isActive && <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-flash-accent shadow-[0_0_15px_rgba(22,198,12,0.8)] rounded-full" />}
+                            </button>
+                        );
+                    })}
+                </div>
+            )}
+            
+            {/* Content */}
+            <div className="flex-1 min-h-0 relative">
+                 {selectedArtifact ? (
+                    <ArtifactEditor 
+                        artifact={selectedArtifact} 
+                        onSaveAction={editor.onSave} 
+                        onRefineAction={editor.onRefine}
+                        ctx={ctx} 
+                    />
+                 ) : (
+                    <div className="absolute inset-0 flex items-center justify-center text-gray-600 text-[10px] uppercase tracking-widest opacity-50">
+                        Select an artifact to view details
+                    </div>
+                 )}
             </div>
         </div>
-      </div>
-    </div>
-  );
+    );
 };
-// ... rest of the file (AgentsRail, ArtifactsExplorer, etc) ...
 
 const AgentsRail: React.FC<any> = ({ agents = [], ctx }) => {
     return (
@@ -855,6 +828,7 @@ const Inspector: React.FC<any> = ({ sections = [], ctx }) => {
         <div className="flex flex-col gap-6">
             {sections.map((sec: any, i: number) => {
                 if (sec.type === 'Status') return <InspectorStatus key={i} ctx={ctx} />;
+                if (sec.type === 'Timeline') return <Timeline key={i} steps={sec.steps} />;
                 if (sec.type === 'Checklist') return <InspectorChecklist key={i} {...sec} ctx={ctx} />;
                 return null;
             })}
@@ -867,6 +841,9 @@ const Workspace3Pane: React.FC<any> = ({ header, left, center, right, ctx }) => 
   
   return (
     <div className="max-w-[1800px] mx-auto pb-48">
+      {/* Voice Control Floating Button */}
+      <VoiceControl />
+
       {/* Header */}
       <div className="sticky top-0 z-40 bg-flash-bg/90 backdrop-blur-xl py-6 border-b border-white/5 mb-10 transition-all">
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 px-4">
@@ -944,6 +921,7 @@ export const renderNode = (node: UiNode, ctx: Ctx): React.ReactNode => {
     case "AgentsRail": return <AgentsRail {...node} ctx={ctx} />;
     case "Canvas": return <Canvas {...node} ctx={ctx} />;
     case "Inspector": return <Inspector {...node} ctx={ctx} />;
+    case "Timeline": return <Timeline {...node} ctx={ctx} />;
     default: return null;
   }
 };

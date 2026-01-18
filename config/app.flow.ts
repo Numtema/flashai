@@ -244,6 +244,14 @@ const flow: AppFlow = {
         "right": {
           "sections": [
             { "type": "Status" },
+            {
+                "type": "Timeline",
+                "steps": [
+                    { "id": "1", "label": "Discovery & Research", "agent": "scraper" },
+                    { "id": "2", "label": "Strategy & Messaging", "agent": "copywriter" },
+                    { "id": "3", "label": "Visual Identity", "agent": "designer" }
+                ]
+            },
             { 
               "type": "Checklist",
               "title": "Quality Gates",
