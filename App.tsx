@@ -1,13 +1,29 @@
 import React, { useEffect, useMemo } from "react";
 import { HashRouter as Router, Routes, Route, Navigate, useParams, useNavigate } from "react-router-dom";
 import flow from "./config/app.flow";
-import { renderNode } from "./engine/renderer";
+import { renderNode, ToastContainer, CommandPalette, Terminal } from "./engine/renderer";
 import { useAppStore } from "./store/useAppStore";
 import { eventBus } from "./engine/eventBus";
 import { orchestrator } from "./services/orchestrator";
 import { ScreenNode } from "./types";
 import { runAction } from "./engine/actions";
 import { interpolate } from "./engine/bindings";
+
+// --- Nav Bridge (React-controlled Navigation) ---
+const NavBridge = () => {
+  const navigate = useNavigate();
+  const pending = useAppStore((s) => s.getPath("app.pendingNavTo"));
+  const setPath = useAppStore((s) => s.setPath);
+
+  useEffect(() => {
+    if (pending) {
+      navigate(pending);
+      setPath("app.pendingNavTo", null);
+    }
+  }, [pending, navigate, setPath]);
+
+  return null;
+};
 
 // --- Generic JSON Page Component ---
 
@@ -18,16 +34,13 @@ const JsonScreenPage: React.FC<{ screenId: string }> = ({ screenId }) => {
   const screen = flow.screens.find((s: any) => s.id === screenId) as ScreenNode;
 
   // Stability: Serialize params to ensure referential equality for dependencies
-  // This prevents infinite re-renders when useParams returns a new object with same values
   const paramsString = JSON.stringify(paramsRaw);
   const params = useMemo(() => JSON.parse(paramsString), [paramsString]);
 
-  // Memoize context to prevent unnecessary re-renders of children
   const ctx = useMemo(() => ({ route: { params }, navigate }), [params, navigate]);
 
-  // Effect: Sync Params & Run onEnter
   useEffect(() => {
-    // 1. Sync Router Params to Store (Only if changed)
+    // 1. Sync Router Params to Store
     const currentParams = useAppStore.getState().route.params;
     if (JSON.stringify(currentParams) !== paramsString) {
         setRouteParams(params);
@@ -35,7 +48,6 @@ const JsonScreenPage: React.FC<{ screenId: string }> = ({ screenId }) => {
 
     // 2. Run onEnter Logic
     if (screen?.onEnter) {
-        // Use requestAnimationFrame to defer action execution out of render cycle
         const frame = requestAnimationFrame(() => {
             for(const step of screen.onEnter!) {
                 if(step.op === 'action') {
@@ -63,18 +75,36 @@ const JsonScreenPage: React.FC<{ screenId: string }> = ({ screenId }) => {
 export default function App() {
   const setPath = useAppStore((s) => s.setPath);
   const pushPath = useAppStore((s) => s.pushPath);
+  const addNotify = useAppStore((s) => s.addNotification);
 
-  // Initialize Global Event Bus Listeners
   useEffect(() => {
-    // Init State from JSON (Only if store is empty/hydrated poorly, but persist handles this usually)
-    // We keep this to ensure defaults exist if local storage is empty
     const stores = flow.state?.stores || {};
+    // Ensure initial state exists if not hydrated
     const currentState = useAppStore.getState().data;
     if (!currentState.workspace) {
         for (const [k, v] of Object.entries(stores)) {
             setPath(k, (v as any).initial ?? {});
         }
     }
+
+    // Handler: app.toggleTheme
+    const offTheme = eventBus.on("app.toggleTheme", () => {
+        const current = useAppStore.getState().getPath("app.settings.grayscale");
+        setPath("app.settings.grayscale", !current);
+    });
+
+    // Handler: ui.notify
+    const offNotify = eventBus.on("ui.notify", (payload) => {
+        addNotify(payload.type, payload.message);
+        // Auto remove after 3s handled by component or separate effect, 
+        // but for now relying on manual or we can add timeout logic in store.
+        // Let's keep it simple: manual close in UI, or improved store logic later.
+        // Actually, let's auto-dismiss in the store for better UX:
+        setTimeout(() => {
+             // We can't easily remove by ID here without returning ID from store.
+             // Relying on user close for now or future improvement.
+        }, 3000);
+    });
 
     // Handler: workspace.create
     const offCreate = eventBus.on("workspace.create", (payload) => {
@@ -84,8 +114,9 @@ export default function App() {
         setPath("workspace.status", "INTAKE_RECEIVED");
         setPath("workspace.artifacts", []);
         
-        // Fix Race Condition: Navigate immediately via hash since we are outside React Context
-        window.location.hash = `#/workspace/${id}`;
+        // Fix: Use state-driven navigation via NavBridge
+        setPath("app.pendingNavTo", `/workspace/${id}`);
+        addNotify('success', 'Workspace initialized');
     });
 
     // Handler: workspace.load
@@ -101,9 +132,7 @@ export default function App() {
         setPath("workspace.currentAgent", agentName);
 
         try {
-            // Call the Real Orchestrator (Gemini)
             const res = await orchestrator.runAgent(prospectId, agentName);
-            
             setPath(`workspace.stateByAgent.${agentName}.status`, "done");
             
             if (Array.isArray(res?.artifacts) && res.artifacts.length) {
@@ -113,10 +142,12 @@ export default function App() {
                 const last = res.artifacts[res.artifacts.length - 1];
                 setPath("workspace.selectedArtifactId", last.id);
                 setPath("workspace.selectedTab", last.defaultTab || "profile");
+                addNotify('success', `Agent ${agentName} finished`);
             }
         } catch (e: any) {
              setPath(`workspace.stateByAgent.${agentName}.status`, "failed");
              pushPath("workspace.errors", { agentName, message: String(e?.message || e) });
+             addNotify('error', `Agent ${agentName} failed`);
         }
     });
 
@@ -124,6 +155,7 @@ export default function App() {
     const offPatch = eventBus.on("artifacts.applyPatch", (payload) => {
         const store = useAppStore.getState();
         store.applyArtifactPatch(payload.artifactId, payload.patch);
+        addNotify('success', 'Changes saved');
     });
 
     // Handler: versions.snapshot
@@ -136,17 +168,31 @@ export default function App() {
             workspace: structuredClone(store.getPath("workspace")),
         };
         store.pushPath("workspace.versions", snap);
+        addNotify('info', 'Version snapshot created');
     });
     
-    // Cleanup listeners on unmount
     return () => {
-        offCreate(); offLoad(); offRun(); offPatch(); offSnap();
+        offCreate(); offLoad(); offRun(); offPatch(); offSnap(); offTheme(); offNotify();
     };
 
   }, []);
 
+  // Effect: Sync Theme
+  const isGrayscale = useAppStore((s) => s.getPath("app.settings.grayscale"));
+  useEffect(() => {
+    if (isGrayscale) {
+        document.documentElement.classList.add("theme-bw");
+    } else {
+        document.documentElement.classList.remove("theme-bw");
+    }
+  }, [isGrayscale]);
+
   return (
     <Router>
+      <NavBridge />
+      <ToastContainer />
+      <CommandPalette />
+      <Terminal />
       <div className="bg-flash-bg min-h-screen text-gray-200 font-sans selection:bg-flash-accent/30 selection:text-white">
         <Routes>
             <Route path="/" element={<Navigate to={flow.app.routing.initialRoute} replace />} />

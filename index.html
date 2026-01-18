@@ -19,10 +19,10 @@
             },
             colors: {
               flash: {
-                bg: '#0a0a0a',
-                surface: '#121212',
-                accent: '#16C60C',
-                border: 'rgba(255,255,255,0.08)'
+                bg: 'var(--flash-bg)',
+                surface: 'var(--flash-surface)',
+                accent: 'var(--flash-accent)',
+                border: 'var(--flash-border)'
               }
             }
           }
@@ -30,7 +30,16 @@
       }
     </script>
     <style>
-      body { background-color: #050505; color: #e5e5e5; }
+      :root {
+        --flash-bg: #0a0a0a;
+        --flash-surface: #121212;
+        --flash-accent: #16C60C;
+        --flash-border: rgba(255,255,255,0.08);
+      }
+      .theme-bw {
+        --flash-accent: #ffffff;
+      }
+      body { background-color: var(--flash-bg); color: #e5e5e5; }
       /* Custom Scrollbar for "Silent UI" feel */
       ::-webkit-scrollbar { width: 6px; height: 6px; }
       ::-webkit-scrollbar-track { background: transparent; }

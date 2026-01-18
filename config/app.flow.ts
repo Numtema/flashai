@@ -31,6 +31,12 @@ const flow: AppFlow = {
     }
   },
   "actions": {
+    "toggleTheme": {
+      "type": "command",
+      "effects": [
+        { "op": "dispatch", "target": "app.toggleTheme", "payload": {} }
+      ]
+    },
     "createWorkspace": {
       "type": "command",
       "effects": [
@@ -55,6 +61,12 @@ const flow: AppFlow = {
          { "op": "dispatch", "target": "orchestrator.runAgent", "payload": { "agentName": "copywriter", "prospectId": "{{workspace.prospectId}}" } }
       ]
     },
+    "runDesigner": {
+      "type": "command",
+      "effects": [
+         { "op": "dispatch", "target": "orchestrator.runAgent", "payload": { "agentName": "designer", "prospectId": "{{workspace.prospectId}}" } }
+      ]
+    },
     "saveArtifact": {
       "type": "command",
       "effects": [
@@ -71,7 +83,6 @@ const flow: AppFlow = {
       "type": "command",
       "effects": [
         { "op": "set", "path": "workspace.selectedArtifactId", "value": "{{params.artifactId}}" },
-        // Optional: Reset tab to default if needed, or keep current
         { "op": "set", "path": "workspace.selectedTab", "value": "profile" } 
       ]
     }
@@ -84,7 +95,10 @@ const flow: AppFlow = {
         "type": "Workspace3Pane",
         "header": {
           "title": "LeadSite Factory",
-          "subtitle": "Select a template to begin"
+          "subtitle": "Select a template to begin",
+          "actions": [
+            { "type": "Button", "label": "{{app.settings.grayscale ? 'Color' : 'B/W'}}", "variant": "secondary", "onClick": { "$action": "toggleTheme" } }
+          ]
         },
         "center": {
           "type": "Stack",
@@ -125,6 +139,7 @@ const flow: AppFlow = {
           "title": "{{workspace.prospectName}}",
           "subtitle": "Workspace ID: {{workspace.prospectId}}",
           "actions": [
+            { "type": "Button", "label": "{{app.settings.grayscale ? 'Color' : 'B/W'}}", "variant": "secondary", "onClick": { "$action": "toggleTheme" } },
             { "type": "Button", "label": "Snapshot", "variant": "secondary", "onClick": { "$action": "snapshotWorkspace", "params": { "note": "User requested" } } }
           ]
         },
@@ -132,19 +147,30 @@ const flow: AppFlow = {
           "agents": [
             {
               "name": "scraper",
+              "role": "Data Analyst",
+              "avatar": "https://api.dicebear.com/9.x/bottts-neutral/svg?seed=scraper&backgroundColor=transparent",
               "statusPath": "workspace.stateByAgent.scraper.status",
               "primaryAction": { "label": "Scan", "onClick": { "$action": "runScraper" } }
             },
             {
               "name": "copywriter",
+              "role": "Creative Lead",
+              "avatar": "https://api.dicebear.com/9.x/bottts-neutral/svg?seed=copywriter&backgroundColor=transparent",
               "statusPath": "workspace.stateByAgent.copywriter.status",
               "primaryAction": { "label": "Draft", "onClick": { "$action": "runCopywriter" } }
+            },
+            {
+              "name": "designer",
+              "role": "UI/UX Architect",
+              "avatar": "https://api.dicebear.com/9.x/bottts-neutral/svg?seed=designer&backgroundColor=transparent",
+              "statusPath": "workspace.stateByAgent.designer.status",
+              "primaryAction": { "label": "Design", "onClick": { "$action": "runDesigner" } } 
             }
           ],
           "secondary": {
              "type": "ArtifactsExplorer",
              "bind": "workspace.artifacts",
-             "onOpen": { "$action": "selectArtifact" } 
+             "onOpen": { "$action": "selectArtifact", "params": { "artifactId": "{{item.id}}" } } 
           }
         },
         "center": {
@@ -152,7 +178,7 @@ const flow: AppFlow = {
           "tabs": [
             { "id": "profile", "label": "Profile" },
             { "id": "copy", "label": "Copy" },
-            { "id": "seo", "label": "SEO" }
+            { "id": "design", "label": "Design" }
           ],
           "selectedTabPath": "workspace.selectedTab",
           "editor": {

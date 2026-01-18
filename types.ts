@@ -22,8 +22,29 @@ export interface WorkspaceState {
   stateByAgent?: Record<string, { status: 'idle' | 'running' | 'done' | 'failed' }>;
 }
 
+export interface Notification {
+  id: string;
+  type: 'success' | 'error' | 'info';
+  message: string;
+}
+
+export interface LogEntry {
+  id: string;
+  timestamp: string;
+  source: string;
+  message: string;
+  level: 'info' | 'warn' | 'error' | 'success';
+}
+
 export interface AppState {
   workspace: WorkspaceState;
+  notifications: Notification[];
+  logs: LogEntry[];
+  ui: {
+    focusMode: boolean;
+    terminalOpen: boolean;
+    commandPaletteOpen: boolean;
+  };
   [key: string]: any;
 }
 
